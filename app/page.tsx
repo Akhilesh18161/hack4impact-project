@@ -67,7 +67,7 @@ import type { City } from '@/lib/city-data'
 
 function HighlightsCard({ city }: { city: City }) {
   return (
-    <Card className="border-border/50">
+    <Card className="border-border/50 flex-1">
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-sm font-bold">
           <Leaf className="size-4 text-primary" />

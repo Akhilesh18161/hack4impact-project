@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import { ChevronLeft, ChevronRight, Clock, Play } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
@@ -9,13 +9,22 @@ import { NEWS_ITEMS, type NewsItem } from '@/lib/city-data'
 
 export function NewsStrip() {
   const [selectedNews, setSelectedNews] = useState<NewsItem | null>(null)
-  const [hoveredId, setHoveredId] = useState<string | null>(null)
-  const scrollRef = useRef<HTMLDivElement>(null)
+  const [currentIndex, setCurrentIndex] = useState(0)
+
+  // Auto-advance carousel
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentIndex((prev) => (prev === NEWS_ITEMS.length - 1 ? 0 : prev + 1))
+    }, 5000)
+    return () => clearInterval(timer)
+  }, [])
 
   const scroll = (dir: 'left' | 'right') => {
-    if (!scrollRef.current) return
-    // Scroll by the width of one poster + gap
-    scrollRef.current.scrollBy({ left: dir === 'left' ? -340 : 340, behavior: 'smooth' })
+    if (dir === 'left') {
+      setCurrentIndex((prev) => (prev === 0 ? NEWS_ITEMS.length - 1 : prev - 1))
+    } else {
+      setCurrentIndex((prev) => (prev === NEWS_ITEMS.length - 1 ? 0 : prev + 1))
+    }
   }
 
   return (
@@ -31,7 +40,7 @@ export function NewsStrip() {
               City Spotlight
             </h2>
             <p className="text-[11px] text-muted-foreground">
-              Latest sustainability news across Nepal
+              Featured sustainability news across Nepal
             </p>
           </div>
           <Badge className="bg-primary/15 text-primary text-[10px] px-2 h-5 animate-pulse">
@@ -40,146 +49,121 @@ export function NewsStrip() {
         </div>
       </div>
 
-      {/* Netflix-style Row */}
-      <div className="group/row relative -mx-2 px-2">
-        {/* Left Arrow */}
-        <button
-          className="absolute -left-4 top-1/2 z-10 flex size-12 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-background/80 text-foreground opacity-0 shadow-xl backdrop-blur-md transition-all duration-300 hover:scale-110 hover:bg-background group-hover/row:-left-2 group-hover/row:opacity-100 sm:-left-6 sm:group-hover/row:-left-4"
-          onClick={() => scroll('left')}
-          aria-label="Scroll left"
+      {/* Hero Carousel - fits one at a time */}
+      <div className="group/row relative w-full overflow-hidden rounded-2xl border border-border/10 shadow-2xl" style={{ height: '400px' }}>
+        
+        {/* Slides Container */}
+        <div 
+          className="flex h-full w-full transition-transform duration-700 cubic-bezier(0.25, 1, 0.5, 1)"
+          style={{ transform: `translateX(-${currentIndex * 100}%)` }}
         >
-          <ChevronLeft className="size-6" />
-        </button>
-
-        {/* Scrollable news row */}
-        <div
-          ref={scrollRef}
-          className="no-scrollbar flex gap-4 overflow-x-auto pb-6 pt-2"
-          style={{ scrollSnapType: 'x mandatory' }}
-        >
-          {NEWS_ITEMS.map((item) => (
-            <NewsCard
-              key={item.id}
-              item={item}
-              isHovered={hoveredId === item.id}
-              onHover={() => setHoveredId(item.id)}
-              onLeave={() => setHoveredId(null)}
+          {NEWS_ITEMS.map((item, idx) => (
+            <div 
+              key={item.id} 
+              className="relative h-full w-full flex-shrink-0 cursor-pointer overflow-hidden group/slide"
               onClick={() => setSelectedNews(item)}
-            />
+              role="button"
+              tabIndex={0}
+              aria-label={`Read more: ${item.title}`}
+              onKeyDown={(e) => e.key === 'Enter' && setSelectedNews(item)}
+            >
+              {/* Background Image */}
+              <Image
+                src={item.image}
+                alt={item.title}
+                fill
+                className="object-cover transition-transform duration-[10000ms] ease-out group-hover/slide:scale-110"
+                priority={idx === 0}
+                sizes="(max-width: 1600px) 100vw"
+              />
+              
+              {/* Dark Fade Overlay */}
+              <div
+                className="absolute inset-0 transition-opacity duration-500"
+                style={{
+                  background: 'linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.5) 50%, transparent 100%)',
+                  opacity: 0.9,
+                }}
+              />
+
+              {/* Play icon overlay on hover */}
+              <div
+                className="absolute inset-0 flex items-center justify-center transition-all duration-500"
+                style={{ 
+                  opacity: 0,
+                  transform: 'scale(0.8)'
+                }}
+                className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/slide:opacity-100 group-hover/slide:scale-100 transition-all duration-500 z-10"
+              >
+                <div className="flex size-16 items-center justify-center rounded-full bg-white/20 shadow-2xl backdrop-blur-md border border-white/30 transition-transform duration-300 hover:scale-110">
+                  <Play className="size-8 ml-1 fill-white text-white" />
+                </div>
+              </div>
+
+              {/* Content overlaid at the bottom */}
+              <div className="absolute inset-x-0 bottom-0 flex flex-col justify-end p-6 md:p-8 z-10 transition-transform duration-500 group-hover/slide:-translate-y-2">
+                {/* Category Badge */}
+                <span className="mb-4 w-fit rounded bg-primary px-3 py-1 text-[11px] font-black uppercase tracking-widest text-primary-foreground shadow-lg">
+                  {item.category}
+                </span>
+
+                {/* Title */}
+                <h3 className="mb-3 text-2xl md:text-3xl font-black leading-tight tracking-tight text-white drop-shadow-lg">
+                  {item.title}
+                </h3>
+
+                {/* Description / Summary */}
+                <p className="mb-5 line-clamp-2 md:line-clamp-3 max-w-3xl text-sm md:text-base font-medium leading-relaxed text-white/80 drop-shadow-md">
+                  {item.summary}
+                </p>
+
+                {/* Metadata */}
+                <div className="flex items-center gap-3 text-xs font-bold tracking-wide text-white/60">
+                  <Clock className="size-4 text-primary" />
+                  <span>{item.readTime}m read</span>
+                  <span className="opacity-50">•</span>
+                  <span className="text-white/90">{item.city}</span>
+                </div>
+              </div>
+            </div>
           ))}
         </div>
 
+        {/* Left Arrow */}
+        <button
+          className="absolute left-4 top-1/2 z-20 flex size-12 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-black/40 text-white opacity-0 shadow-2xl backdrop-blur-md transition-all duration-300 hover:scale-110 hover:bg-black/60 group-hover/row:opacity-100"
+          onClick={(e) => { e.stopPropagation(); scroll('left'); }}
+          aria-label="Previous slide"
+        >
+          <ChevronLeft className="size-7 pr-0.5" />
+        </button>
+
         {/* Right Arrow */}
         <button
-          className="absolute -right-4 top-1/2 z-10 flex size-12 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-background/80 text-foreground opacity-0 shadow-xl backdrop-blur-md transition-all duration-300 hover:scale-110 hover:bg-background group-hover/row:-right-2 group-hover/row:opacity-100 sm:-right-6 sm:group-hover/row:-right-4"
-          onClick={() => scroll('right')}
-          aria-label="Scroll right"
+          className="absolute right-4 top-1/2 z-20 flex size-12 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-black/40 text-white opacity-0 shadow-2xl backdrop-blur-md transition-all duration-300 hover:scale-110 hover:bg-black/60 group-hover/row:opacity-100"
+          onClick={(e) => { e.stopPropagation(); scroll('right'); }}
+          aria-label="Next slide"
         >
-          <ChevronRight className="size-6" />
+          <ChevronRight className="size-7 pl-0.5" />
         </button>
+
+        {/* Indicator Dots */}
+        <div className="absolute bottom-6 right-6 z-20 flex items-center gap-2">
+          {NEWS_ITEMS.map((_, idx) => (
+            <button
+              key={idx}
+              onClick={(e) => { e.stopPropagation(); setCurrentIndex(idx); }}
+              className={`h-1.5 rounded-full transition-all duration-300 ${
+                idx === currentIndex ? 'w-6 bg-white' : 'w-1.5 bg-white/40 hover:bg-white/70'
+              }`}
+              aria-label={`Go to slide ${idx + 1}`}
+            />
+          ))}
+        </div>
       </div>
 
       {/* News detail popup */}
       <NewsPopup news={selectedNews} onClose={() => setSelectedNews(null)} />
     </section>
-  )
-}
-
-interface NewsCardProps {
-  item: NewsItem
-  isHovered: boolean
-  onHover: () => void
-  onLeave: () => void
-  onClick: () => void
-}
-
-function NewsCard({ item, isHovered, onHover, onLeave, onClick }: NewsCardProps) {
-  return (
-    <article
-      className="group relative flex-shrink-0 cursor-pointer overflow-hidden rounded-xl border border-border/10 shadow-lg"
-      style={{
-        width: '320px',
-        height: '460px',
-        scrollSnapAlign: 'start',
-        transition: 'all 400ms cubic-bezier(0.25, 0.46, 0.45, 0.94)',
-        transform: isHovered ? 'scale(1.02) translateY(-4px)' : 'scale(1) translateY(0)',
-        zIndex: isHovered ? 20 : 1,
-      }}
-      onMouseEnter={onHover}
-      onMouseLeave={onLeave}
-      onClick={onClick}
-      role="button"
-      aria-label={`Read more: ${item.title}`}
-      tabIndex={0}
-      onKeyDown={(e) => e.key === 'Enter' && onClick()}
-    >
-      {/* Background Image */}
-      <Image
-        src={item.image}
-        alt={item.title}
-        fill
-        className="object-cover transition-transform duration-700 group-hover:scale-110"
-        sizes="320px"
-      />
-      
-      {/* Dark Fade Background (always visible but darker on hover) */}
-      <div
-        className="absolute inset-0 transition-opacity duration-500"
-        style={{
-          background: 'linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.6) 40%, rgba(0,0,0,0.1) 100%)',
-          opacity: isHovered ? 1 : 0.85,
-        }}
-      />
-
-      {/* Play icon overlay on hover */}
-      <div
-        className="absolute inset-0 flex items-center justify-center transition-all duration-500"
-        style={{ 
-          opacity: isHovered ? 1 : 0,
-          transform: isHovered ? 'scale(1)' : 'scale(0.8)'
-        }}
-      >
-        <div className="flex size-14 items-center justify-center rounded-full bg-white/20 shadow-2xl backdrop-blur-md border border-white/30">
-          <Play className="size-6 ml-1 fill-white text-white" />
-        </div>
-      </div>
-
-      {/* Content at the bottom */}
-      <div className="absolute inset-x-0 bottom-0 flex flex-col justify-end p-5 transition-transform duration-500"
-           style={{ transform: isHovered ? 'translateY(-8px)' : 'translateY(0)' }}>
-        
-        {/* Category Badge */}
-        <span className="mb-3 w-fit rounded bg-primary/90 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-primary-foreground backdrop-blur-sm shadow-sm">
-          {item.category}
-        </span>
-
-        {/* Title */}
-        <h3 className="mb-2 text-xl font-black leading-tight tracking-tight text-white drop-shadow-md">
-          {item.title}
-        </h3>
-
-        {/* Description / Summary */}
-        <p className="mb-4 line-clamp-3 text-xs font-medium leading-relaxed text-white/80 drop-shadow transition-all duration-500">
-          {item.summary}
-        </p>
-
-        {/* Metadata */}
-        <div className="flex items-center gap-2 text-[10px] font-semibold tracking-wide text-white/60">
-          <Clock className="size-3" />
-          <span>{item.readTime}m read</span>
-          <span className="opacity-50">•</span>
-          <span className="text-primary">{item.city}</span>
-        </div>
-      </div>
-
-      {/* Glow effect on hover */}
-      <div
-        className="pointer-events-none absolute inset-0 rounded-xl border-2 transition-all duration-500"
-        style={{
-          borderColor: isHovered ? 'rgba(255,255,255,0.2)' : 'transparent',
-          boxShadow: isHovered ? 'inset 0 0 20px rgba(255,255,255,0.1)' : 'none',
-        }}
-      />
-    </article>
   )
 }

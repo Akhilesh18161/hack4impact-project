@@ -47,7 +47,7 @@ export default function Page() {
               <CityCharts city={selectedCity} />
             </div>
             {/* Comparison takes 1/4 */}
-            <div className="flex flex-col gap-4 xl:col-span-1">
+            <div className="flex flex-col gap-4 xl:col-span-1 h-full">
               <CitiesComparison />
               {/* City highlights quick card */}
               <HighlightsCard city={selectedCity} />

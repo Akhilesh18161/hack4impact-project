@@ -11,9 +11,9 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'NepalCity — Sustainable Cities Dashboard',
+  title: 'UrbanPulse — Sustainable Cities Dashboard',
   description:
-    'Real-time insights on sustainability, AQI, economy, and urban development across major Nepal cities.',
+    'Real-time insights on sustainability, AQI, economy, and urban development across major municipal cities.',
   generator: 'v0.app',
 }
 

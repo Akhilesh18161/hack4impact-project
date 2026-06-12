@@ -1,6 +1,6 @@
 'use client'
 
-import { Leaf, Globe, Bell } from 'lucide-react'
+import { Activity, Globe, Bell } from 'lucide-react'
 import { ThemeToggle } from './theme-toggle'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -41,11 +41,11 @@ export function DashboardHeader() {
           {/* Logo */}
           <div className="flex items-center gap-3">
             <div className="flex size-9 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-lg shadow-primary/30 transition-transform duration-200 hover:scale-105">
-              <Leaf className="size-4" />
+              <Activity className="size-4 animate-pulse" />
             </div>
             <div className="hidden sm:block">
               <h1 className="text-sm font-bold leading-none tracking-tight text-foreground">
-                NepalCity
+                UrbanPulse
               </h1>
               <p className="mt-0.5 text-[10px] font-medium text-muted-foreground">
                 Sustainable Cities Dashboard
@@ -56,7 +56,7 @@ export function DashboardHeader() {
           {/* Center badge */}
           <div className="hidden items-center gap-2 md:flex">
             <Globe className="size-3.5 text-primary" />
-            <span className="text-xs font-medium text-muted-foreground">Nepal Urban Monitor</span>
+            <span className="text-xs font-medium text-muted-foreground">Urban Monitor</span>
             <Badge
               variant="secondary"
               className="bg-primary/10 text-primary text-[10px] px-2 py-0 h-5"

@@ -2,4 +2,4 @@
 2:I[82594,["/hack4impact-project/_next/static/chunks/0372f9aaclb4p.js","/hack4impact-project/_next/static/chunks/0d4f2mjhwfrg_.js","/hack4impact-project/_next/static/chunks/0bl~g5acqbvnq.js","/hack4impact-project/_next/static/chunks/0nz4act03t~h4.js"],"default"]
 3:I[15921,["/hack4impact-project/_next/static/chunks/0372f9aaclb4p.js","/hack4impact-project/_next/static/chunks/0d4f2mjhwfrg_.js","/hack4impact-project/_next/static/chunks/0bl~g5acqbvnq.js","/hack4impact-project/_next/static/chunks/0nz4act03t~h4.js"],"default"]
 4:[]
-0:{"rsc":["$","$1","c",{"children":[null,["$","$L2",null,{"parallelRouterKey":"children","template":["$","$L3",null,{}]}]]}],"isPartial":false,"staleTime":300,"varyParams":"$W4","buildId":"dC4kYlMnYpjmr6ICgX0oa"}
+0:{"rsc":["$","$1","c",{"children":[null,["$","$L2",null,{"parallelRouterKey":"children","template":["$","$L3",null,{}]}]]}],"isPartial":false,"staleTime":300,"varyParams":"$W4","buildId":"kwRdWOGPVqdlZ9zTZtDxg"}

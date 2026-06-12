@@ -27,6 +27,8 @@ export interface PulseReport {
   category: PulseCategory;
   otherCategory?: string;
   location: string;
+  mapLat?: number;
+  mapLng?: number;
   priority: PriorityLevel;
   status: PulseStatus;
   dateSubmitted: string;
@@ -39,8 +41,42 @@ export interface PulseReport {
   adminUpdates?: { date: string; message: string }[];
 }
 
-// Global store for the mock pulse reports (in a real app, this would be a DB)
-export let MOCK_PULSE_REPORTS: PulseReport[] = [
+// ── Pub/Sub listeners ─────────────────────────────────────────────────────
+type Listener = () => void;
+const listeners = new Set<Listener>();
+
+/** Subscribe to any data mutation. Returns an unsubscribe function. */
+export function subscribeToReports(listener: Listener): () => void {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+}
+
+function notify() {
+  listeners.forEach((l) => l());
+}
+
+// ── localStorage persistence ──────────────────────────────────────────────
+const STORAGE_KEY = 'urbanpulse_reports_v1';
+
+function persist() {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(MOCK_PULSE_REPORTS));
+  } catch {
+    // Quota exceeded (likely large base64 images) — strip uploaded media and retry
+    try {
+      const stripped = MOCK_PULSE_REPORTS.map((r) => ({
+        ...r,
+        images: r.images?.filter((img) => !img.startsWith('data:')),
+        videos: [],
+      }));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(stripped));
+    } catch { /* give up silently */ }
+  }
+}
+
+// ── Seed / initial data ───────────────────────────────────────────────────
+const SEED_DATA: PulseReport[] = [
   {
     id: 'PR-1042',
     title: 'Massive Pothole on Ring Road',
@@ -102,29 +138,81 @@ export let MOCK_PULSE_REPORTS: PulseReport[] = [
   }
 ];
 
-export const addPulseReport = (report: Omit<PulseReport, 'id' | 'status' | 'dateSubmitted' | 'confirmations' | 'adminUpdates'>) => {
+/** Load reports from localStorage on the client, fall back to seed data. */
+function loadInitialReports(): PulseReport[] {
+  if (typeof window === 'undefined') return [...SEED_DATA]; // server → seed only
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) {
+      const parsed: PulseReport[] = JSON.parse(stored);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch { /* corrupt data → fall back to seed */ }
+  return [...SEED_DATA];
+}
+
+// Global in-memory store (initialised from localStorage or seed data)
+export let MOCK_PULSE_REPORTS: PulseReport[] = loadInitialReports();
+
+// ── Mutation helpers ──────────────────────────────────────────────────────
+
+export const addPulseReport = (
+  report: Omit<PulseReport, 'id' | 'status' | 'dateSubmitted' | 'confirmations' | 'adminUpdates'>
+): PulseReport => {
   const newReport: PulseReport = {
     ...report,
     id: `PR-${Math.floor(1000 + Math.random() * 9000)}`,
     status: 'Submitted',
     dateSubmitted: new Date().toISOString(),
     confirmations: 1,
-    adminUpdates: []
+    adminUpdates: [],
   };
   MOCK_PULSE_REPORTS = [newReport, ...MOCK_PULSE_REPORTS];
+  persist();
+  notify();
   return newReport;
 };
 
-export const updatePulseReportStatus = (id: string, newStatus: PulseStatus, resolutionSummary?: string) => {
-  MOCK_PULSE_REPORTS = MOCK_PULSE_REPORTS.map(report => {
-    if (report.id === id) {
-      return {
-        ...report,
-        status: newStatus,
-        resolutionSummary: resolutionSummary || report.resolutionSummary,
-        dateResolved: newStatus === 'Resolved' || newStatus === 'Closed' ? new Date().toISOString() : report.dateResolved
-      }
-    }
-    return report;
+export const updatePulseReportStatus = (
+  id: string,
+  newStatus: PulseStatus,
+  resolutionSummary?: string
+) => {
+  MOCK_PULSE_REPORTS = MOCK_PULSE_REPORTS.map((report) => {
+    if (report.id !== id) return report;
+    return {
+      ...report,
+      status: newStatus,
+      resolutionSummary: resolutionSummary || report.resolutionSummary,
+      dateResolved:
+        newStatus === 'Resolved' || newStatus === 'Closed'
+          ? new Date().toISOString()
+          : report.dateResolved,
+    };
   });
+  persist();
+  notify();
+};
+
+export const updatePulseReportPriority = (id: string, priority: PriorityLevel) => {
+  MOCK_PULSE_REPORTS = MOCK_PULSE_REPORTS.map((report) =>
+    report.id === id ? { ...report, priority } : report
+  );
+  persist();
+  notify();
+};
+
+export const addAdminUpdate = (id: string, message: string) => {
+  MOCK_PULSE_REPORTS = MOCK_PULSE_REPORTS.map((report) => {
+    if (report.id !== id) return report;
+    return {
+      ...report,
+      adminUpdates: [
+        ...(report.adminUpdates || []),
+        { date: new Date().toISOString(), message },
+      ],
+    };
+  });
+  persist();
+  notify();
 };

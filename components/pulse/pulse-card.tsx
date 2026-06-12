@@ -1,4 +1,7 @@
+'use client'
+
 import React from 'react';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { PulseReport } from '@/lib/pulse-data';
@@ -11,6 +14,15 @@ interface PulseCardProps {
 }
 
 export function PulseCard({ report, onClick }: PulseCardProps) {
+  const router = useRouter();
+
+  const handleClick = () => {
+    if (onClick) {
+      onClick(report);
+    } else {
+      router.push(`/pulse?report=${encodeURIComponent(report.id)}`);
+    }
+  };
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case 'Critical': return 'bg-red-500/10 text-red-500 border-red-500/20';
@@ -24,7 +36,7 @@ export function PulseCard({ report, onClick }: PulseCardProps) {
   return (
     <Card 
       className="group overflow-hidden flex flex-col h-full hover:shadow-lg transition-all duration-300 border-border/50 hover:border-primary/30 bg-card/50 backdrop-blur-sm cursor-pointer"
-      onClick={() => onClick && onClick(report)}
+      onClick={handleClick}
     >
       {/* Optional image header */}
       {report.images && report.images.length > 0 && (

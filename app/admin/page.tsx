@@ -5,10 +5,10 @@ import { useAuth } from '@/components/auth-provider'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { ShieldCheck, Settings, Users, BarChart3, BellRing, ClipboardList, Activity, MapPin, CheckCircle2 } from 'lucide-react'
+import { ShieldCheck, Settings, Users, BarChart3, BellRing, ClipboardList, Activity, MapPin, CheckCircle2, Image as ImageIcon, ExternalLink, Flag, PlusCircle } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useRouter } from 'next/navigation'
-import { MOCK_PULSE_REPORTS, updatePulseReportStatus, PulseStatus } from '@/lib/pulse-data'
+import { MOCK_PULSE_REPORTS, updatePulseReportStatus, updatePulseReportPriority, addAdminUpdate, PulseStatus, PriorityLevel } from '@/lib/pulse-data'
 import { StatusBadge } from '@/components/pulse/status-badge'
 
 export default function AdminPortalPage() {
@@ -40,9 +40,22 @@ export default function AdminPortalPage() {
 
   const [reports, setReports] = useState(MOCK_PULSE_REPORTS)
   const [selectedReportId, setSelectedReportId] = useState<string | null>(null)
+  const [newUpdateText, setNewUpdateText] = useState('')
 
   const handleUpdateStatus = (id: string, newStatus: PulseStatus) => {
     updatePulseReportStatus(id, newStatus)
+    setReports([...MOCK_PULSE_REPORTS])
+  }
+
+  const handleUpdatePriority = (id: string, priority: PriorityLevel) => {
+    updatePulseReportPriority(id, priority)
+    setReports([...MOCK_PULSE_REPORTS])
+  }
+
+  const handlePublishUpdate = (id: string) => {
+    if (!newUpdateText.trim()) return
+    addAdminUpdate(id, newUpdateText.trim())
+    setNewUpdateText('')
     setReports([...MOCK_PULSE_REPORTS])
   }
 
@@ -220,38 +233,146 @@ export default function AdminPortalPage() {
                               <h4 className="font-bold text-xs uppercase text-muted-foreground mb-2">Description</h4>
                               <p className="leading-relaxed">{report.description}</p>
                             </div>
+
+                            {/* Evidence Images */}
+                            {report.images && report.images.length > 0 && (
+                              <div className="mt-4">
+                                <h4 className="font-bold text-xs uppercase text-muted-foreground mb-2 flex items-center gap-1.5">
+                                  <ImageIcon className="size-3.5" /> Evidence Photos ({report.images.length})
+                                </h4>
+                                <div className="grid grid-cols-3 gap-2">
+                                  {report.images.map((src, i) => (
+                                    <a key={i} href={src} target="_blank" rel="noopener noreferrer">
+                                      <div className="aspect-video rounded-lg overflow-hidden border border-border bg-muted group">
+                                        <img src={src} alt={`Evidence ${i + 1}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                                      </div>
+                                    </a>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Map Location */}
+                            {report.mapLat && report.mapLng && (
+                              <div className="mt-4">
+                                <h4 className="font-bold text-xs uppercase text-muted-foreground mb-2 flex items-center gap-1.5">
+                                  <MapPin className="size-3.5" /> Location on Map
+                                </h4>
+                                <div className="rounded-lg overflow-hidden border border-border/60">
+                                  <iframe
+                                    src={`https://www.openstreetmap.org/export/embed.html?bbox=${report.mapLng - 0.015}%2C${report.mapLat - 0.015}%2C${report.mapLng + 0.015}%2C${report.mapLat + 0.015}&layer=mapnik&marker=${report.mapLat}%2C${report.mapLng}`}
+                                    width="100%"
+                                    height="160"
+                                    style={{ border: 0 }}
+                                    loading="lazy"
+                                    title="Report Location"
+                                  />
+                                  <a
+                                    href={`https://www.openstreetmap.org/?mlat=${report.mapLat}&mlon=${report.mapLng}&zoom=16`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center justify-center gap-1 text-[10px] text-primary py-1 bg-muted/40 hover:bg-muted/60 transition-colors"
+                                  >
+                                    <ExternalLink className="size-3" /> Open in OpenStreetMap
+                                  </a>
+                                </div>
+                              </div>
+                            )}
                           </div>
 
-                          <div className="p-5 bg-muted/10 flex-1">
-                            <h4 className="font-bold text-xs uppercase text-muted-foreground mb-3 flex items-center gap-1.5">
-                              <Settings className="size-3.5" /> Manage Workflow Status
-                            </h4>
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                              {([
-                                'Submitted', 'Under Review', 'Assessment in Progress', 'Action Approved', 
-                                'Implementation in Progress', 'Near Completion', 'Resolved', 'Closed'
-                              ] as PulseStatus[]).map((status) => (
-                                <button
-                                  key={status}
-                                  onClick={() => handleUpdateStatus(report.id, status)}
-                                  className={`text-xs p-2 rounded-md border text-center transition-all ${
-                                    report.status === status 
-                                      ? 'bg-primary text-primary-foreground border-primary font-bold shadow-md' 
-                                      : 'bg-card border-border hover:border-primary/50 text-muted-foreground hover:text-foreground'
-                                  }`}
-                                >
-                                  {status}
-                                </button>
-                              ))}
+                          <div className="p-5 bg-muted/10 flex-1 flex flex-col gap-6">
+                            {/* Status */}
+                            <div>
+                              <h4 className="font-bold text-xs uppercase text-muted-foreground mb-3 flex items-center gap-1.5">
+                                <Settings className="size-3.5" /> Manage Workflow Status
+                              </h4>
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                                {(['Submitted', 'Under Review', 'Assessment in Progress', 'Action Approved', 'Implementation in Progress', 'Near Completion', 'Resolved', 'Closed'] as PulseStatus[]).map((status) => (
+                                  <button
+                                    key={status}
+                                    onClick={() => handleUpdateStatus(report.id, status)}
+                                    className={`text-xs p-2 rounded-md border text-center transition-all ${
+                                      report.status === status 
+                                        ? 'bg-primary text-primary-foreground border-primary font-bold shadow-md' 
+                                        : 'bg-card border-border hover:border-primary/50 text-muted-foreground hover:text-foreground'
+                                    }`}
+                                  >
+                                    {status}
+                                  </button>
+                                ))}
+                              </div>
                             </div>
 
+                            {/* Priority */}
+                            <div>
+                              <h4 className="font-bold text-xs uppercase text-muted-foreground mb-3 flex items-center gap-1.5">
+                                <Flag className="size-3.5" /> Change Priority
+                              </h4>
+                              <div className="grid grid-cols-4 gap-2">
+                                {(['Low', 'Medium', 'High', 'Critical'] as PriorityLevel[]).map((p) => {
+                                  const colors: Record<string, string> = {
+                                    Low: 'border-green-500 bg-green-500/10 text-green-600',
+                                    Medium: 'border-yellow-500 bg-yellow-500/10 text-yellow-600',
+                                    High: 'border-orange-500 bg-orange-500/10 text-orange-600',
+                                    Critical: 'border-red-500 bg-red-500/10 text-red-600',
+                                  }
+                                  return (
+                                    <button
+                                      key={p}
+                                      onClick={() => handleUpdatePriority(report.id, p)}
+                                      className={`text-xs p-2 rounded-md border text-center font-semibold transition-all ${
+                                        report.priority === p
+                                          ? colors[p] + ' shadow-sm'
+                                          : 'bg-card border-border text-muted-foreground hover:border-primary/40'
+                                      }`}
+                                    >
+                                      {p}
+                                    </button>
+                                  )
+                                })}
+                              </div>
+                            </div>
+
+                            {/* Publish Update */}
+                            <div>
+                              <h4 className="font-bold text-xs uppercase text-muted-foreground mb-3 flex items-center gap-1.5">
+                                <PlusCircle className="size-3.5" /> Publish Public Update
+                              </h4>
+                              <div className="flex flex-col gap-2">
+                                <textarea
+                                  className="w-full text-sm p-3 rounded-lg border border-border/60 bg-card focus:outline-none focus:ring-1 focus:ring-primary min-h-[70px] resize-none"
+                                  placeholder="Write a public update for citizens following this report..."
+                                  value={newUpdateText}
+                                  onChange={(e) => setNewUpdateText(e.target.value)}
+                                />
+                                <button
+                                  onClick={() => handlePublishUpdate(report.id)}
+                                  disabled={!newUpdateText.trim()}
+                                  className="self-end text-xs bg-primary text-primary-foreground px-4 py-1.5 rounded-lg font-bold shadow-sm hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                                >
+                                  Publish Update
+                                </button>
+                              </div>
+                              {report.adminUpdates && report.adminUpdates.length > 0 && (
+                                <div className="mt-3 flex flex-col gap-2">
+                                  {report.adminUpdates.slice().reverse().map((u, i) => (
+                                    <div key={i} className="text-xs bg-muted/40 border border-border/50 rounded-lg p-2.5">
+                                      <span className="text-[10px] font-mono text-muted-foreground block mb-1">{new Date(u.date).toLocaleString()}</span>
+                                      {u.message}
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Resolution Summary */}
                             {report.status === 'Resolved' && (
-                              <div className="mt-6 animate-in fade-in slide-in-from-bottom-4">
+                              <div className="animate-in fade-in slide-in-from-bottom-4">
                                 <h4 className="font-bold text-xs uppercase text-green-500 mb-2 flex items-center gap-1.5">
                                   <CheckCircle2 className="size-3.5" /> Resolution Summary
                                 </h4>
                                 <textarea 
-                                  className="w-full text-sm p-3 rounded-lg border border-green-500/30 bg-green-500/5 focus:outline-none focus:ring-1 focus:ring-green-500 min-h-[80px]"
+                                  className="w-full text-sm p-3 rounded-lg border border-green-500/30 bg-green-500/5 focus:outline-none focus:ring-1 focus:ring-green-500 min-h-[80px] resize-none"
                                   placeholder="Enter resolution details to publish to the community portal..."
                                   defaultValue={report.resolutionSummary || ''}
                                   onBlur={(e) => {

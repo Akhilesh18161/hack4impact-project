@@ -4,7 +4,7 @@ import React, { useState } from 'react'
 import { useAuth } from '@/components/auth-provider'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { UserCheck, MapPin, CheckCircle2, Calendar, Activity, ArrowRight, ShieldCheck } from 'lucide-react'
+import { UserCheck, MapPin, CheckCircle2, Calendar, Activity, ArrowRight, ShieldCheck, Image as ImageIcon } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { MOCK_PULSE_REPORTS } from '@/lib/pulse-data'
 import Link from 'next/link'
@@ -144,6 +144,28 @@ export default function CommunityPortalPage() {
                       
                       <h4 className="text-xs font-bold uppercase text-muted-foreground mb-2">Original Description</h4>
                       <p className="text-sm text-muted-foreground leading-relaxed">"{report.description}"</p>
+
+                      {/* Evidence Images */}
+                      {report.images && report.images.length > 0 && (
+                        <div className="mt-4">
+                          <h4 className="text-xs font-bold uppercase text-muted-foreground mb-2 flex items-center gap-1">
+                            <ImageIcon className="size-3" /> Evidence Photos
+                          </h4>
+                          <div className="grid grid-cols-3 gap-1.5">
+                            {report.images.map((src, i) => (
+                              <a key={i} href={src} target="_blank" rel="noopener noreferrer">
+                                <div className="aspect-video rounded-md overflow-hidden border border-border bg-muted group">
+                                  <img
+                                    src={src}
+                                    alt={`Evidence ${i + 1}`}
+                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                  />
+                                </div>
+                              </a>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                     
                     <div className="p-5 bg-muted/20">

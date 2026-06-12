@@ -127,6 +127,7 @@ export function DashboardHeader() {
   const navLinks = [
     { name: 'Home', href: '/' },
     { name: 'News', href: '/news' },
+    { name: 'Pulse', href: '/pulse' },
     { name: 'Community Hub', href: '/community-hub' },
     { name: 'About Us', href: '/about' },
   ]

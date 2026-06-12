@@ -1,6 +1,6 @@
 :HL["/hack4impact-project/_next/static/chunks/066jf0nk75nic.css","style"]
-:HL["/hack4impact-project/_next/static/chunks/0kzseu3yw.1p2.css","style"]
+:HL["/hack4impact-project/_next/static/chunks/0t5makqdb5voj.css","style"]
 :HL["/hack4impact-project/_next/static/media/797e433ab948586e-s.p.08e28id.o-okb.woff2","font",{"crossOrigin":"","type":"font/woff2"}]
 :HL["/hack4impact-project/_next/static/media/caa3a2e1cccd8315-s.p.09~u27dqhyhd6.woff2","font",{"crossOrigin":"","type":"font/woff2"}]
 :HL["/hack4impact-project/news/biratnagar-industry.png","image"]
-0:{"tree":{"name":"","param":null,"prefetchHints":16,"slots":{"children":{"name":"insights","param":null,"prefetchHints":0,"slots":{"children":{"name":"id","param":{"type":"d","key":"4","siblings":null},"prefetchHints":0,"slots":{"children":{"name":"__PAGE__","param":null,"prefetchHints":0,"slots":null}}}}}}},"staleTime":300,"buildId":"iA76EjlnGF-nvNBDn2U-k"}
+0:{"tree":{"name":"","param":null,"prefetchHints":16,"slots":{"children":{"name":"insights","param":null,"prefetchHints":0,"slots":{"children":{"name":"id","param":{"type":"d","key":"4","siblings":null},"prefetchHints":0,"slots":{"children":{"name":"__PAGE__","param":null,"prefetchHints":0,"slots":null}}}}}}},"staleTime":300,"buildId":"UO2LNMoKZkh8-1xXgDTxD"}

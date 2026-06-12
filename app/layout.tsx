@@ -3,6 +3,8 @@ import { Geist, Geist_Mono } from 'next/font/google'
 import './globals.css'
 import { ThemeProvider } from '@/components/theme-provider'
 import { TooltipProvider } from '@/components/ui/tooltip'
+import { AuthProvider } from '@/components/auth-provider'
+import { DashboardHeader } from '@/components/dashboard/header'
 
 const geistSans = Geist({ variable: '--font-geist-sans', subsets: ['latin'] })
 const geistMono = Geist_Mono({
@@ -40,7 +42,16 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange={false}
         >
-          <TooltipProvider delayDuration={200}>{children}</TooltipProvider>
+          <AuthProvider>
+            <TooltipProvider delayDuration={200}>
+              <div className="relative flex min-h-screen flex-col">
+                <DashboardHeader />
+                <div className="flex-1">
+                  {children}
+                </div>
+              </div>
+            </TooltipProvider>
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>

@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { DashboardHeader } from '@/components/dashboard/header'
 import { NewsStrip } from '@/components/dashboard/news-strip'
 import { CitySelector } from '@/components/dashboard/city-selector'
 import { CityOverview } from '@/components/dashboard/city-overview'
@@ -23,9 +22,6 @@ export default function Page() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Sticky header */}
-      <DashboardHeader />
-
       {/* Hero Section */}
       <section className="relative flex min-h-[80vh] flex-col items-center justify-center overflow-hidden bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/15 via-background to-background px-4 py-20 text-center border-b border-border/20">
         {/* Subtle grid pattern background */}
@@ -89,7 +85,6 @@ export default function Page() {
 
       <main id="dashboard-content" className="mx-auto max-w-[1600px] px-4 pb-16 pt-16 sm:px-6 lg:px-8 scroll-mt-16">
         <div className="flex flex-col gap-8">
-
           {/* ── 1. Netflix-style news strip ── */}
           <NewsStrip />
 

@@ -2,13 +2,12 @@
 
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
+import Link from 'next/link'
 import { ChevronLeft, ChevronRight, Clock, Play } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
-import { NewsPopup } from './news-popup'
-import { NEWS_ITEMS, type NewsItem } from '@/lib/city-data'
+import { NEWS_ITEMS } from '@/lib/city-data'
 
 export function NewsStrip() {
-  const [selectedNews, setSelectedNews] = useState<NewsItem | null>(null)
   const [currentIndex, setCurrentIndex] = useState(0)
 
   // Auto-advance carousel
@@ -58,14 +57,11 @@ export function NewsStrip() {
           style={{ transform: `translateX(-${currentIndex * 100}%)` }}
         >
           {NEWS_ITEMS.map((item, idx) => (
-            <div 
+            <Link 
               key={item.id} 
-              className="relative h-full w-full flex-shrink-0 cursor-pointer overflow-hidden group/slide"
-              onClick={() => setSelectedNews(item)}
-              role="button"
-              tabIndex={0}
+              href={`/insights/${item.id}`}
+              className="relative h-full w-full flex-shrink-0 cursor-pointer overflow-hidden group/slide block"
               aria-label={`Read more: ${item.title}`}
-              onKeyDown={(e) => e.key === 'Enter' && setSelectedNews(item)}
             >
               {/* Background Image */}
               <Image
@@ -86,19 +82,8 @@ export function NewsStrip() {
                 }}
               />
 
-              {/* Play icon overlay on hover */}
-              <div
-                className="absolute inset-0 flex items-center justify-center transition-all duration-500"
-                style={{ 
-                  opacity: 0,
-                  transform: 'scale(0.8)'
-                }}
-                className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/slide:opacity-100 group-hover/slide:scale-100 transition-all duration-500 z-10"
-              >
-                <div className="flex size-16 items-center justify-center rounded-full bg-white/20 shadow-2xl backdrop-blur-md border border-white/30 transition-transform duration-300 hover:scale-110">
-                  <Play className="size-8 ml-1 fill-white text-white" />
-                </div>
-              </div>
+              {/* Optional slight dark overlay on hover to indicate clickability without a play button */}
+              <div className="absolute inset-0 bg-black/0 transition-colors duration-500 group-hover/slide:bg-black/20 z-10" />
 
               {/* Content overlaid at the bottom */}
               <div className="absolute inset-x-0 bottom-0 flex flex-col justify-end p-6 md:p-8 z-10 transition-transform duration-500 group-hover/slide:-translate-y-2">
@@ -125,14 +110,14 @@ export function NewsStrip() {
                   <span className="text-white/90">{item.city}</span>
                 </div>
               </div>
-            </div>
+            </Link>
           ))}
         </div>
 
         {/* Left Arrow */}
         <button
           className="absolute left-4 top-1/2 z-20 flex size-12 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-black/40 text-white opacity-0 shadow-2xl backdrop-blur-md transition-all duration-300 hover:scale-110 hover:bg-black/60 group-hover/row:opacity-100"
-          onClick={(e) => { e.stopPropagation(); scroll('left'); }}
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); scroll('left'); }}
           aria-label="Previous slide"
         >
           <ChevronLeft className="size-7 pr-0.5" />
@@ -141,7 +126,7 @@ export function NewsStrip() {
         {/* Right Arrow */}
         <button
           className="absolute right-4 top-1/2 z-20 flex size-12 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-black/40 text-white opacity-0 shadow-2xl backdrop-blur-md transition-all duration-300 hover:scale-110 hover:bg-black/60 group-hover/row:opacity-100"
-          onClick={(e) => { e.stopPropagation(); scroll('right'); }}
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); scroll('right'); }}
           aria-label="Next slide"
         >
           <ChevronRight className="size-7 pl-0.5" />
@@ -152,7 +137,7 @@ export function NewsStrip() {
           {NEWS_ITEMS.map((_, idx) => (
             <button
               key={idx}
-              onClick={(e) => { e.stopPropagation(); setCurrentIndex(idx); }}
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentIndex(idx); }}
               className={`h-1.5 rounded-full transition-all duration-300 ${
                 idx === currentIndex ? 'w-6 bg-white' : 'w-1.5 bg-white/40 hover:bg-white/70'
               }`}
@@ -161,9 +146,6 @@ export function NewsStrip() {
           ))}
         </div>
       </div>
-
-      {/* News detail popup */}
-      <NewsPopup news={selectedNews} onClose={() => setSelectedNews(null)} />
     </section>
   )
 }

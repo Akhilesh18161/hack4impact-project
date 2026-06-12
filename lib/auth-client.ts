@@ -145,5 +145,17 @@ export const authClient = {
     if (typeof window !== 'undefined') {
       localStorage.setItem(STORAGE_SESSION_KEY, JSON.stringify(user));
     }
+  },
+  
+  // Get all registered users
+  getAllUsers: async (): Promise<UserProfile[]> => {
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    return getRegisteredUsers().map(u => ({
+      id: u.id,
+      email: u.email,
+      fullName: u.fullName,
+      role: u.role,
+      avatarUrl: u.avatarUrl
+    }));
   }
 };

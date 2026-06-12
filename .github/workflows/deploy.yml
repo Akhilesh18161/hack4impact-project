@@ -36,6 +36,8 @@ jobs:
         run: pnpm install
       - name: Build with Next.js
         run: pnpm run build
+        env:
+          NEXT_PUBLIC_GNEWS_API_KEY: ${{ secrets.NEXT_PUBLIC_GNEWS_API_KEY }}
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:

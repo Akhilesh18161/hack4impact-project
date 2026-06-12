@@ -162,7 +162,7 @@ export function CitiesComparison() {
                 <TabsContent key={key} value={key}>
                   <p className="mb-4 text-xs text-muted-foreground">{desc}</p>
                   <ResponsiveContainer width="100%" height={280}>
-                    <BarChart data={data} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                    <BarChart data={data as any[]} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" opacity={0.5} />
                       <XAxis
                         dataKey="city"

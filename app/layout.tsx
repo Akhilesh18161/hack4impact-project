@@ -43,7 +43,7 @@ export default function RootLayout({
           disableTransitionOnChange={false}
         >
           <AuthProvider>
-            <TooltipProvider delayDuration={200}>
+            <TooltipProvider delay={200}>
               <div className="relative flex min-h-screen flex-col">
                 <DashboardHeader />
                 <div className="flex-1">

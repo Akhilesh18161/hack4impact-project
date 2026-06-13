@@ -9,19 +9,21 @@ export function EditPostModal({
   post,
   isOpen,
   onClose,
-  onSuccess
+  onSuccess,
+  currentUserId
 }: {
   post: Post
   isOpen: boolean
   onClose: () => void
   onSuccess: (post: Post) => void
+  currentUserId: string
 }) {
   const [description, setDescription] = useState(post.description)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const handleSubmit = async () => {
     setIsSubmitting(true)
-    const updated = await communityClient.editPost(post.id, post.authorId, { description })
+    const updated = await communityClient.editPost(post.id, currentUserId, { description })
     setIsSubmitting(false)
     if (updated) {
       onSuccess(updated)
@@ -162,3 +164,47 @@ export function RequestRemovalModal({
     </Dialog>
   )
 }
+
+export function DeletePostModal({
+  post,
+  isOpen,
+  onClose,
+  onSuccess,
+  currentUserId
+}: {
+  post: Post
+  isOpen: boolean
+  onClose: () => void
+  onSuccess: () => void
+  currentUserId: string
+}) {
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const handleSubmit = async () => {
+    setIsSubmitting(true)
+    const success = await communityClient.deletePost(post.id, currentUserId)
+    setIsSubmitting(false)
+    if (success) {
+      onSuccess()
+      onClose()
+    }
+  }
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Delete Post</DialogTitle>
+          <DialogDescription>
+            Are you sure you want to delete this post? This action cannot be undone.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter className="mt-4">
+          <Button variant="outline" onClick={onClose} disabled={isSubmitting}>Cancel</Button>
+          <Button variant="destructive" onClick={handleSubmit} disabled={isSubmitting}>Delete Post</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+

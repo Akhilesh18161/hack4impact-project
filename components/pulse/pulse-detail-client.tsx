@@ -13,7 +13,7 @@ import {
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { useAuth } from '@/components/auth-provider'
-import { EditPulseModal, RequestModificationModal, RequestRemovalModal } from './content-action-modals'
+import { EditPulseModal, RequestModificationModal, RequestRemovalModal, DeletePulseModal } from './content-action-modals'
 import { pulseClient } from '@/lib/pulse-data'
 
 const priorityColors: Record<string, string> = {
@@ -37,18 +37,18 @@ export function PulseDetailClient({ report: initialReport }: Props) {
   const [isEditOpen, setIsEditOpen] = useState(false)
   const [isModReqOpen, setIsModReqOpen] = useState(false)
   const [isRemReqOpen, setIsRemReqOpen] = useState(false)
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false)
 
   const isAdmin = user?.role === 'admin'
   const isAuthor = user?.id === report?.reporterId || isAdmin
   const canEditDirectly = isAdmin || report?.verificationStatus === 'Pending Review' || report?.verificationStatus === 'Rejected'
 
-  const handleDelete = async () => {
-    if (!user || !report || !isAuthor) return
-    if (!confirm('Are you sure you want to delete this report?')) return
-    const success = await pulseClient.deletePulseReport(report.id, user.id)
-    if (success) {
-      router.push('/pulse')
-    }
+  const handleDeleteClick = () => {
+    setIsDeleteOpen(true)
+  }
+
+  const handleDeleteSuccess = () => {
+    router.push('/pulse')
   }
 
   if (!report) {
@@ -137,7 +137,7 @@ export function PulseDetailClient({ report: initialReport }: Props) {
                       <Button variant="outline" size="sm" onClick={() => setIsEditOpen(true)} className="gap-2">
                         <Edit2 className="size-4" /> Edit
                       </Button>
-                      <Button variant="destructive" size="sm" onClick={handleDelete} className="gap-2">
+                      <Button variant="destructive" size="sm" onClick={handleDeleteClick} className="gap-2">
                         <Trash2 className="size-4" /> Delete
                       </Button>
                     </>
@@ -333,6 +333,14 @@ export function PulseDetailClient({ report: initialReport }: Props) {
             isOpen={isEditOpen}
             onClose={() => setIsEditOpen(false)}
             onSuccess={setReport}
+            currentUserId={user.id}
+          />
+          <DeletePulseModal
+            report={report}
+            isOpen={isDeleteOpen}
+            onClose={() => setIsDeleteOpen(false)}
+            onSuccess={handleDeleteSuccess}
+            currentUserId={user.id}
           />
           <RequestModificationModal
             report={report}

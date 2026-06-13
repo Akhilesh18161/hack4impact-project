@@ -9,20 +9,21 @@ export function EditPulseModal({
   report,
   isOpen,
   onClose,
-  onSuccess
+  onSuccess,
+  currentUserId
 }: {
   report: PulseReport
   isOpen: boolean
   onClose: () => void
   onSuccess: (report: PulseReport) => void
+  currentUserId: string
 }) {
   const [description, setDescription] = useState(report.description)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const handleSubmit = async () => {
-    if (!report.reporterId) return
     setIsSubmitting(true)
-    const updated = await pulseClient.editPulseReport(report.id, report.reporterId, { description })
+    const updated = await pulseClient.editPulseReport(report.id, currentUserId, { description })
     setIsSubmitting(false)
     if (updated) {
       onSuccess(updated)
@@ -163,3 +164,47 @@ export function RequestRemovalModal({
     </Dialog>
   )
 }
+
+export function DeletePulseModal({
+  report,
+  isOpen,
+  onClose,
+  onSuccess,
+  currentUserId
+}: {
+  report: PulseReport
+  isOpen: boolean
+  onClose: () => void
+  onSuccess: () => void
+  currentUserId: string
+}) {
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const handleSubmit = async () => {
+    setIsSubmitting(true)
+    const success = await pulseClient.deletePulseReport(report.id, currentUserId)
+    setIsSubmitting(false)
+    if (success) {
+      onSuccess()
+      onClose()
+    }
+  }
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Delete Pulse Report</DialogTitle>
+          <DialogDescription>
+            Are you sure you want to delete this report? This action cannot be undone.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter className="mt-4">
+          <Button variant="outline" onClick={onClose} disabled={isSubmitting}>Cancel</Button>
+          <Button variant="destructive" onClick={handleSubmit} disabled={isSubmitting}>Delete Report</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+

@@ -252,8 +252,9 @@ export const pulseClient = {
   },
 
   subscribeToReports: (callback: () => void) => {
+    const channelName = `public:pulse_reports:${Math.random().toString(36).substring(7)}`;
     const channel = supabase
-      .channel('public:pulse_reports')
+      .channel(channelName)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'pulse_reports' }, () => {
         callback();
       })

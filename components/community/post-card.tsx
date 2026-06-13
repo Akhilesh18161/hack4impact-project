@@ -28,7 +28,7 @@ import { cn } from '@/lib/utils'
 import { ReputationBadge } from './reputation-badge'
 import { ShareModal } from './share-modal'
 import { ReportModal } from './report-modal'
-import { EditPostModal, RequestModificationModal, RequestRemovalModal } from './content-action-modals'
+import { EditPostModal, RequestModificationModal, RequestRemovalModal, DeletePostModal } from './content-action-modals'
 
 interface PostCardProps {
   post: Post
@@ -74,6 +74,7 @@ export function PostCard({ post, currentUserId, onPostUpdated, onExpandComments 
   const [isEditOpen, setIsEditOpen] = useState(false)
   const [isModReqOpen, setIsModReqOpen] = useState(false)
   const [isRemReqOpen, setIsRemReqOpen] = useState(false)
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false)
 
   const [reputation, setReputation] = useState<UserReputation | null>(null)
   const [localShareCount, setLocalShareCount] = useState(post.shareCount)
@@ -120,16 +121,15 @@ export function PostCard({ post, currentUserId, onPostUpdated, onExpandComments 
     })
   }
 
-  const handleDelete = async () => {
-    if (!currentUserId || !isAuthor) return
-    if (!confirm('Are you sure you want to delete this post?')) return
-    const success = await communityClient.deletePost(post.id, currentUserId)
-    if (success) {
-      // Just re-fetch to let the parent handle the missing post or tell parent to refresh
-      const p = await communityClient.getPost(post.id)
-      if (p) onPostUpdated(p)
-      else window.location.reload() // quick fallback
-    }
+  const handleDeleteClick = () => {
+    setIsDeleteOpen(true)
+  }
+
+  const handleDeleteSuccess = async () => {
+    // Just re-fetch to let the parent handle the missing post or tell parent to refresh
+    const p = await communityClient.getPost(post.id)
+    if (p) onPostUpdated(p)
+    else window.location.reload() // quick fallback
   }
 
   const isAuthorAdmin = post.authorRole === 'admin'
@@ -332,7 +332,7 @@ export function PostCard({ post, currentUserId, onPostUpdated, onExpandComments 
                       <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-muted-foreground hover:text-primary" onClick={() => setIsEditOpen(true)} title="Edit Post">
                         <Edit2 className="size-3.5" />
                       </Button>
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive" onClick={handleDelete} title="Delete Post">
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive" onClick={handleDeleteClick} title="Delete Post">
                         <Trash2 className="size-3.5" />
                       </Button>
                     </>
@@ -396,6 +396,14 @@ export function PostCard({ post, currentUserId, onPostUpdated, onExpandComments 
             isOpen={isEditOpen}
             onClose={() => setIsEditOpen(false)}
             onSuccess={onPostUpdated}
+            currentUserId={currentUserId}
+          />
+          <DeletePostModal
+            post={post}
+            isOpen={isDeleteOpen}
+            onClose={() => setIsDeleteOpen(false)}
+            onSuccess={handleDeleteSuccess}
+            currentUserId={currentUserId}
           />
           <RequestModificationModal
             post={post}

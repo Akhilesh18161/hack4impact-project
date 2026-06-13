@@ -1,6 +1,6 @@
 'use client'
 
-import { Activity, Bell, LogIn, Menu, X } from 'lucide-react'
+import { Bell, LogIn, Menu, X, CheckCircle2, MessageSquare, AlertTriangle, Activity } from 'lucide-react'
 import { ThemeToggle } from './theme-toggle'
 import { Button } from '@/components/ui/button'
 import { useState, useEffect, useRef } from 'react'
@@ -10,6 +10,90 @@ import { ProfileDropdown } from './profile-dropdown'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { AnimatePresence, motion } from 'framer-motion'
+
+function NotificationsPanel() {
+  const [open, setOpen] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  return (
+    <div className="relative" ref={containerRef}>
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={() => setOpen(!open)}
+        className="relative size-9 rounded-full transition-all duration-200 hover:bg-primary/10 hover:text-primary"
+        aria-label="Notifications"
+      >
+        <Bell className="size-4" />
+        <span className="absolute right-1.5 top-1.5 size-2 rounded-full bg-primary" />
+      </Button>
+
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: -6, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -6, scale: 0.97 }}
+            transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
+            className="absolute right-0 top-full z-50 mt-2.5 w-80 overflow-hidden rounded-2xl border border-border/60 bg-card/90 shadow-2xl shadow-black/25 backdrop-blur-2xl"
+          >
+            <div className="flex items-center justify-between border-b border-border/50 bg-muted/30 px-4 py-3">
+              <h3 className="font-semibold text-sm">Notifications</h3>
+              <span className="text-[10px] text-muted-foreground font-medium bg-primary/10 text-primary px-2 py-0.5 rounded-full">2 New</span>
+            </div>
+            <div className="max-h-[300px] overflow-y-auto">
+              <div className="flex gap-3 px-4 py-3 hover:bg-muted/50 transition-colors border-b border-border/30 cursor-pointer">
+                <div className="mt-0.5 shrink-0 rounded-full bg-green-500/10 p-1.5">
+                  <CheckCircle2 className="size-4 text-green-500" />
+                </div>
+                <div>
+                  <p className="text-xs font-semibold">Report Resolved</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Your report "Streetlight Broken" has been marked as resolved.</p>
+                  <span className="text-[10px] text-muted-foreground mt-1 block">2 hours ago</span>
+                </div>
+              </div>
+              <div className="flex gap-3 px-4 py-3 hover:bg-muted/50 transition-colors border-b border-border/30 cursor-pointer">
+                <div className="mt-0.5 shrink-0 rounded-full bg-primary/10 p-1.5">
+                  <MessageSquare className="size-4 text-primary" />
+                </div>
+                <div>
+                  <p className="text-xs font-semibold">New Administrator Reply</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Admin left a comment on your recent issue.</p>
+                  <span className="text-[10px] text-muted-foreground mt-1 block">Yesterday</span>
+                </div>
+              </div>
+              <div className="flex gap-3 px-4 py-3 hover:bg-muted/50 transition-colors cursor-pointer">
+                <div className="mt-0.5 shrink-0 rounded-full bg-destructive/10 p-1.5">
+                  <AlertTriangle className="size-4 text-destructive" />
+                </div>
+                <div>
+                  <p className="text-xs font-semibold">System Maintenance</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">UrbanPulse will undergo scheduled maintenance at 12:00 AM.</p>
+                  <span className="text-[10px] text-muted-foreground mt-1 block">2 days ago</span>
+                </div>
+              </div>
+            </div>
+            <div className="border-t border-border/50 bg-muted/10 p-2 text-center">
+              <button onClick={() => setOpen(false)} className="text-xs text-primary font-medium hover:underline">
+                Mark all as read
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
 
 function ClockWidget() {
   const [time, setTime] = useState<string>('')
@@ -133,11 +217,7 @@ export function DashboardHeader() {
   ]
 
   if (user) {
-    if (isAdmin) {
-      navLinks.push({ name: 'Admin Portal', href: '/admin' })
-    } else {
-      navLinks.push({ name: 'Community Portal', href: '/community' })
-    }
+    // Only keeping main links in navbar. Profile dropdown handles portal navigation.
   }
 
   return (
@@ -196,15 +276,7 @@ export function DashboardHeader() {
 
               {/* Notification Icon (Auth Only) */}
               {user && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="relative size-9 rounded-full transition-all duration-200 hover:bg-primary/10 hover:text-primary"
-                  aria-label="Notifications"
-                >
-                  <Bell className="size-4" />
-                  <span className="absolute right-1.5 top-1.5 size-2 rounded-full bg-primary" />
-                </Button>
+                <NotificationsPanel />
               )}
 
               <ThemeToggle />

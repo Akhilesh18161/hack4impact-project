@@ -8,7 +8,7 @@ import { PlusCircle, Activity, Loader2 } from 'lucide-react'
 import { PulseFeed } from '@/components/pulse/pulse-feed'
 import { CreatePulseModal } from '@/components/pulse/create-pulse-modal'
 import { PulseDetailClient } from '@/components/pulse/pulse-detail-client'
-import { MOCK_PULSE_REPORTS, subscribeToReports, addPulseReport } from '@/lib/pulse-data'
+import { MOCK_PULSE_REPORTS, subscribeToReports, addPulseReport, initializeReports } from '@/lib/pulse-data'
 
 /* ── Inner component (needs Suspense for useSearchParams) ─────────────────── */
 function PulseContent() {
@@ -18,7 +18,11 @@ function PulseContent() {
   const [isModalOpen, setIsModalOpen] = useState(false)
 
   // Re-render whenever any mutation fires (admin updates, new reports, etc.)
-  useEffect(() => subscribeToReports(() => forceUpdate()), [])
+  useEffect(() => {
+    const unsubscribe = subscribeToReports(() => forceUpdate())
+    initializeReports()
+    return unsubscribe
+  }, [])
 
   const reportId = searchParams.get('report')
 

@@ -10,7 +10,7 @@ import {
   Car,
   TrendingDown,
 } from 'lucide-react'
-import { MetricPopup } from './metric-popup'
+import { useRouter } from 'next/navigation'
 import type { City, CityMetric } from '@/lib/city-data'
 import { cn } from '@/lib/utils'
 
@@ -64,10 +64,17 @@ const METRIC_CONFIG: Array<{
   },
 ]
 
+const SLUG_MAP: Record<MetricKey, string> = {
+  aqi: 'air-quality',
+  greenCover: 'green-cover',
+  renewableEnergy: 'renewable-energy',
+  wasteRecycling: 'waste-recycling',
+  gdpGrowth: 'gdp-growth',
+  electricVehicles: 'electric-vehicles',
+}
+
 export function CityMetrics({ city }: CityMetricsProps) {
-  const [selectedMetric, setSelectedMetric] = useState<
-    (CityMetric & { icon: React.ReactNode; color: string }) | null
-  >(null)
+  const router = useRouter()
 
   return (
     <section aria-label={`City metrics for ${city.name}`}>
@@ -86,6 +93,7 @@ export function CityMetrics({ city }: CityMetricsProps) {
           const isAqi = key === 'aqi'
           const trendPositive = metric.trend > 0
           const trendGood = isAqi ? !trendPositive : trendPositive
+          const slug = SLUG_MAP[key]
 
           return (
             <MetricCard
@@ -97,18 +105,12 @@ export function CityMetrics({ city }: CityMetricsProps) {
               trendGood={trendGood}
               trendPositive={trendPositive}
               onClick={() =>
-                setSelectedMetric({ ...metric, icon, color })
+                router.push(`/metrics/${slug}?city=${city.id}`)
               }
             />
           )
         })}
       </div>
-
-      <MetricPopup
-        metric={selectedMetric}
-        cityName={city.name}
-        onClose={() => setSelectedMetric(null)}
-      />
     </section>
   )
 }

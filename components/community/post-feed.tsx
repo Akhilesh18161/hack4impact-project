@@ -28,7 +28,6 @@ interface PostFeedProps {
 type SortKey = 'top' | 'newest' | 'oldest' | 'trending' | 'high-priority' | 'low-priority'
 
 const SORT_OPTIONS: { key: SortKey; label: string }[] = [
-  { key: 'top', label: 'Top Rated' },
   { key: 'newest', label: 'Newest First' },
   { key: 'oldest', label: 'Oldest First' },
   { key: 'trending', label: 'Most Discussed' },

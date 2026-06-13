@@ -16,6 +16,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { CITIES, getAqiColor, getSustainabilityColor } from '@/lib/city-data'
+import { AnimatePresence, motion } from 'framer-motion'
+import { X } from 'lucide-react'
 
 const ChartTooltipStyle = {
   backgroundColor: 'var(--popover)',
@@ -91,7 +93,7 @@ export function CitiesComparison() {
   return (
     <>
       <Card
-        className="cursor-pointer border-border/50 transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 hover:border-primary/30"
+        className="cursor-pointer border-border/50 transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 hover:border-primary/30 focus-visible:outline-none focus-visible:ring-0"
         onClick={() => setExpanded(true)}
         role="button"
         aria-label="Expand all-cities comparison"
@@ -133,71 +135,87 @@ export function CitiesComparison() {
         </CardContent>
       </Card>
 
-      <Dialog open={expanded} onOpenChange={setExpanded}>
-        <DialogContent className="max-w-4xl gap-0 p-0 overflow-hidden">
-          <DialogTitle className="sr-only">All Cities Comparison</DialogTitle>
-          <div className="border-b border-border p-5">
-            <h3 className="font-bold text-foreground">All Nepal Cities — Comparison</h3>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Compare key sustainability metrics across all six cities
-            </p>
-          </div>
-          <div className="p-5">
-            <Tabs defaultValue="aqi">
-              <TabsList className="mb-5 flex-wrap h-auto gap-1">
-                <TabsTrigger value="aqi" className="text-xs">AQI</TabsTrigger>
-                <TabsTrigger value="score" className="text-xs">Sustainability Score</TabsTrigger>
-                <TabsTrigger value="renewable" className="text-xs">Renewable Energy</TabsTrigger>
-                <TabsTrigger value="ev" className="text-xs">EV Growth</TabsTrigger>
-                <TabsTrigger value="gdp" className="text-xs">GDP Growth</TabsTrigger>
-              </TabsList>
+      <AnimatePresence>
+        {expanded && (
+          <motion.div
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            className="fixed inset-0 z-[100] flex flex-col bg-background/95 backdrop-blur-xl sm:p-8"
+          >
+            <button
+              onClick={() => setExpanded(false)}
+              className="absolute right-4 top-4 rounded-full p-2 bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground transition-colors z-10"
+              aria-label="Close"
+            >
+              <X className="size-5" />
+            </button>
 
-              {[
-                { key: 'aqi', data: aqiData, dataKey: 'AQI', desc: 'Lower AQI = better air quality.' },
-                { key: 'score', data: scoreData, dataKey: 'Score', desc: 'Composite sustainability score out of 100.' },
-                { key: 'renewable', data: renewableData, dataKey: 'Renewable %', desc: 'Percentage of electricity from renewable sources.' },
-                { key: 'ev', data: evData, dataKey: 'EV Growth %', desc: 'Year-over-year growth in electric vehicle registrations.' },
-                { key: 'gdp', data: gdpData, dataKey: 'GDP Growth %', desc: 'Annual economic growth rate.' },
-              ].map(({ key, data, dataKey, desc }) => (
-                <TabsContent key={key} value={key}>
-                  <p className="mb-4 text-xs text-muted-foreground">{desc}</p>
-                  <ResponsiveContainer width="100%" height={280}>
-                    <BarChart data={data as any[]} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" opacity={0.5} />
-                      <XAxis
-                        dataKey="city"
-                        tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }}
-                        tickLine={false}
-                        axisLine={false}
-                      />
-                      <YAxis
-                        tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }}
-                        tickLine={false}
-                        axisLine={false}
-                      />
-                      <Tooltip content={<CustomTooltip />} />
-                      <Bar dataKey={dataKey} radius={[5, 5, 0, 0]}>
-                        {data.map((entry, index) => (
-                          <Cell key={index} fill={entry.fill} opacity={0.9} />
+            <div className="mx-auto flex w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-border/50 bg-card shadow-2xl mt-8 sm:mt-12 max-h-[85vh]">
+              <div className="border-b border-border/50 p-6 sm:p-8 bg-muted/20">
+                <h3 className="text-xl sm:text-2xl font-bold text-foreground">All Nepal Cities — Comparison</h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Compare key sustainability metrics across all six cities
+                </p>
+              </div>
+              <div className="p-6 sm:p-8 overflow-y-auto">
+                <Tabs defaultValue="aqi">
+                  <TabsList className="mb-6 flex-wrap h-auto gap-2 bg-muted/50 p-1 rounded-xl">
+                    <TabsTrigger value="aqi" className="text-sm rounded-lg">AQI</TabsTrigger>
+                    <TabsTrigger value="score" className="text-sm rounded-lg">Sustainability Score</TabsTrigger>
+                    <TabsTrigger value="renewable" className="text-sm rounded-lg">Renewable Energy</TabsTrigger>
+                    <TabsTrigger value="ev" className="text-sm rounded-lg">EV Growth</TabsTrigger>
+                    <TabsTrigger value="gdp" className="text-sm rounded-lg">GDP Growth</TabsTrigger>
+                  </TabsList>
+
+                  {[
+                    { key: 'aqi', data: aqiData, dataKey: 'AQI', desc: 'Lower AQI = better air quality.' },
+                    { key: 'score', data: scoreData, dataKey: 'Score', desc: 'Composite sustainability score out of 100.' },
+                    { key: 'renewable', data: renewableData, dataKey: 'Renewable %', desc: 'Percentage of electricity from renewable sources.' },
+                    { key: 'ev', data: evData, dataKey: 'EV Growth %', desc: 'Year-over-year growth in electric vehicle registrations.' },
+                    { key: 'gdp', data: gdpData, dataKey: 'GDP Growth %', desc: 'Annual economic growth rate.' },
+                  ].map(({ key, data, dataKey, desc }) => (
+                    <TabsContent key={key} value={key} className="mt-0">
+                      <p className="mb-6 text-sm text-muted-foreground">{desc}</p>
+                      <ResponsiveContainer width="100%" height={320}>
+                        <BarChart data={data as any[]} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" opacity={0.5} />
+                          <XAxis
+                            dataKey="city"
+                            tick={{ fontSize: 12, fill: 'var(--muted-foreground)' }}
+                            tickLine={false}
+                            axisLine={false}
+                          />
+                          <YAxis
+                            tick={{ fontSize: 12, fill: 'var(--muted-foreground)' }}
+                            tickLine={false}
+                            axisLine={false}
+                          />
+                          <Tooltip content={<CustomTooltip />} />
+                          <Bar dataKey={dataKey} radius={[6, 6, 0, 0]}>
+                            {data.map((entry, index) => (
+                              <Cell key={index} fill={entry.fill} opacity={0.9} />
+                            ))}
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                      {/* City legend */}
+                      <div className="mt-6 flex flex-wrap gap-4">
+                        {CITIES.map((city, i) => (
+                          <div key={city.id} className="flex items-center gap-2 text-sm text-muted-foreground font-medium">
+                            <div className="size-3 rounded-sm" style={{ backgroundColor: cityColors[i] }} />
+                            {city.name}
+                          </div>
                         ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                  {/* City legend */}
-                  <div className="mt-4 flex flex-wrap gap-3">
-                    {CITIES.map((city, i) => (
-                      <div key={city.id} className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                        <div className="size-2.5 rounded-sm" style={{ backgroundColor: cityColors[i] }} />
-                        {city.name}
                       </div>
-                    ))}
-                  </div>
-                </TabsContent>
-              ))}
-            </Tabs>
-          </div>
-        </DialogContent>
-      </Dialog>
+                    </TabsContent>
+                  ))}
+                </Tabs>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </>
   )
 }

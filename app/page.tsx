@@ -1,6 +1,8 @@
 'use client'
 
 import { useState } from 'react'
+import { useEffect, Suspense } from 'react'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { NewsStrip } from '@/components/dashboard/news-strip'
 import { CitySelector } from '@/components/dashboard/city-selector'
 import { CityOverview } from '@/components/dashboard/city-overview'
@@ -12,9 +14,24 @@ import { Separator } from '@/components/ui/separator'
 import { ChevronDown, Sparkles } from 'lucide-react'
 import { motion } from 'framer-motion'
 
-export default function Page() {
-  const [selectedCityId, setSelectedCityId] = useState('kathmandu')
+function DashboardContent() {
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const cityParam = searchParams.get('city')
+  
+  const [selectedCityId, setSelectedCityId] = useState(cityParam ?? 'kathmandu')
   const selectedCity = CITIES.find((c) => c.id === selectedCityId) ?? CITIES[0]
+
+  useEffect(() => {
+    if (cityParam && cityParam !== selectedCityId) {
+      setSelectedCityId(cityParam)
+    }
+  }, [cityParam, selectedCityId])
+
+  const handleCitySelect = (id: string) => {
+    setSelectedCityId(id)
+    router.replace(`/?city=${id}`, { scroll: false })
+  }
 
   const handleScrollDown = () => {
     document.getElementById('dashboard-content')?.scrollIntoView({ behavior: 'smooth' })
@@ -93,7 +110,7 @@ export default function Page() {
           {/* ── 2. City selector grid ── */}
           <CitySelector
             selectedCityId={selectedCityId}
-            onSelect={setSelectedCityId}
+            onSelect={handleCitySelect}
           />
 
           {/* ── 3. City overview hero banner ── */}
@@ -102,16 +119,17 @@ export default function Page() {
           {/* ── 4. Key metric tiles ── */}
           <CityMetrics city={selectedCity} />
 
-          {/* ── 5. Charts grid + all-cities comparison ── */}
-          <div className="grid grid-cols-1 gap-4 xl:grid-cols-4">
-            {/* Charts take 3/4 on large screens */}
-            <div className="xl:col-span-3">
-              <CityCharts city={selectedCity} />
-            </div>
-            {/* Comparison takes 1/4 */}
-            <div className="flex flex-col gap-4 xl:col-span-1 h-full">
+          {/* ── 5. Charts full width ── */}
+          <div className="w-full">
+            <CityCharts city={selectedCity} />
+          </div>
+
+          {/* ── 6. Bottom row: Comparison and Highlights side-by-side ── */}
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <div className="flex flex-col h-full w-full">
               <CitiesComparison />
-              {/* City highlights quick card */}
+            </div>
+            <div className="flex flex-col h-full w-full">
               <HighlightsCard city={selectedCity} />
             </div>
           </div>
@@ -119,6 +137,18 @@ export default function Page() {
         </div>
       </main>
     </div>
+  )
+}
+
+export default function Page() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen items-center justify-center bg-background text-muted-foreground">
+        Loading Sustainable Urban Development Monitor...
+      </div>
+    }>
+      <DashboardContent />
+    </Suspense>
   )
 }
 

@@ -8,8 +8,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ShieldCheck, Settings, Users, BarChart3, BellRing, ClipboardList, Activity, MapPin, CheckCircle2, Image as ImageIcon, ExternalLink, Flag, PlusCircle } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useRouter } from 'next/navigation'
-import { MOCK_PULSE_REPORTS, updatePulseReportStatus, updatePulseReportPriority, addAdminUpdate, PulseStatus, PriorityLevel } from '@/lib/pulse-data'
+import { MOCK_PULSE_REPORTS, updatePulseReportStatus, updatePulseReportPriority, addAdminUpdate, PulseStatus, PriorityLevel, initializeReports, subscribeToReports } from '@/lib/pulse-data'
 import { StatusBadge } from '@/components/pulse/status-badge'
+import { MapViewer } from '@/components/pulse/map-viewer'
 
 export default function AdminPortalPage() {
   const { user, isAdmin } = useAuth()
@@ -41,6 +42,15 @@ export default function AdminPortalPage() {
   const [reports, setReports] = useState(MOCK_PULSE_REPORTS)
   const [selectedReportId, setSelectedReportId] = useState<string | null>(null)
   const [newUpdateText, setNewUpdateText] = useState('')
+
+  React.useEffect(() => {
+    const unsubscribe = subscribeToReports(() => {
+      setReports([...MOCK_PULSE_REPORTS])
+    })
+    initializeReports()
+    setReports([...MOCK_PULSE_REPORTS])
+    return unsubscribe
+  }, [])
 
   const handleUpdateStatus = (id: string, newStatus: PulseStatus) => {
     updatePulseReportStatus(id, newStatus)
@@ -259,14 +269,7 @@ export default function AdminPortalPage() {
                                   <MapPin className="size-3.5" /> Location on Map
                                 </h4>
                                 <div className="rounded-lg overflow-hidden border border-border/60">
-                                  <iframe
-                                    src={`https://www.openstreetmap.org/export/embed.html?bbox=${report.mapLng - 0.015}%2C${report.mapLat - 0.015}%2C${report.mapLng + 0.015}%2C${report.mapLat + 0.015}&layer=mapnik&marker=${report.mapLat}%2C${report.mapLng}`}
-                                    width="100%"
-                                    height="160"
-                                    style={{ border: 0 }}
-                                    loading="lazy"
-                                    title="Report Location"
-                                  />
+                                  <MapViewer lat={report.mapLat} lng={report.mapLng} height={160} />
                                   <a
                                     href={`https://www.openstreetmap.org/?mlat=${report.mapLat}&mlon=${report.mapLng}&zoom=16`}
                                     target="_blank"

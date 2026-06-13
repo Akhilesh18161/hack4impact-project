@@ -138,21 +138,27 @@ const SEED_DATA: PulseReport[] = [
   }
 ];
 
-/** Load reports from localStorage on the client, fall back to seed data. */
-function loadInitialReports(): PulseReport[] {
-  if (typeof window === 'undefined') return [...SEED_DATA]; // server → seed only
+// Global in-memory store (initialised from seed data)
+export let MOCK_PULSE_REPORTS: PulseReport[] = [...SEED_DATA];
+
+let isInitialized = false;
+
+/** Load reports from localStorage on the client once mounted to prevent hydration mismatches */
+export function initializeReports() {
+  if (typeof window === 'undefined' || isInitialized) return;
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
-      const parsed: PulseReport[] = JSON.parse(stored);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      const parsed = JSON.parse(stored) as PulseReport[];
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        MOCK_PULSE_REPORTS.length = 0;
+        MOCK_PULSE_REPORTS.push(...parsed);
+        notify();
+      }
     }
-  } catch { /* corrupt data → fall back to seed */ }
-  return [...SEED_DATA];
+  } catch { /* ignore */ }
+  isInitialized = true;
 }
-
-// Global in-memory store (initialised from localStorage or seed data)
-export let MOCK_PULSE_REPORTS: PulseReport[] = loadInitialReports();
 
 // ── Mutation helpers ──────────────────────────────────────────────────────
 

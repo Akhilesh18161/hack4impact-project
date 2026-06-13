@@ -56,12 +56,18 @@ export function ProfileDropdown() {
     {
       icon: User,
       label: 'Profile',
-      action: () => setOpen(false),
+      action: () => {
+        router.push('/profile')
+        setOpen(false)
+      },
     },
     {
       icon: Settings,
       label: 'Account Settings',
-      action: () => setOpen(false),
+      action: () => {
+        router.push('/settings')
+        setOpen(false)
+      },
     },
     {
       icon: LayoutDashboard,
@@ -72,14 +78,12 @@ export function ProfileDropdown() {
       },
     },
     {
-      icon: Bell,
-      label: 'Notifications',
-      action: () => setOpen(false),
-    },
-    {
       icon: HelpCircle,
       label: 'Help & Support',
-      action: () => setOpen(false),
+      action: () => {
+        router.push('/support')
+        setOpen(false)
+      },
     },
   ]
 

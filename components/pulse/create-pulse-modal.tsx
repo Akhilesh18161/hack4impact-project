@@ -142,7 +142,7 @@ export function CreatePulseModal({ isOpen, onClose, onSubmit }: CreatePulseModal
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-foreground">Category</label>
-              <select className="w-full h-9 rounded-md border border-input bg-card px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" value={category} onChange={(e) => setCategory(e.target.value as PulseCategory)}>
+              <select className="w-full h-9 rounded-md border border-input bg-card/80 backdrop-blur-md px-3 text-sm shadow-sm transition-colors hover:border-primary/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary dark:bg-card/80" value={category} onChange={(e) => setCategory(e.target.value as PulseCategory)}>
                 <option value="Infrastructure">Infrastructure</option>
                 <option value="Environmental">Environmental</option>
                 <option value="Public Safety">Public Safety</option>
@@ -155,7 +155,7 @@ export function CreatePulseModal({ isOpen, onClose, onSubmit }: CreatePulseModal
             </div>
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-foreground">Priority Level</label>
-              <select className="w-full h-9 rounded-md border border-input bg-card px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" value={priority} onChange={(e) => setPriority(e.target.value as PriorityLevel)}>
+              <select className="w-full h-9 rounded-md border border-input bg-card/80 backdrop-blur-md px-3 text-sm shadow-sm transition-colors hover:border-primary/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary dark:bg-card/80" value={priority} onChange={(e) => setPriority(e.target.value as PriorityLevel)}>
                 <option value="Low">Low</option>
                 <option value="Medium">Medium</option>
                 <option value="High">High</option>

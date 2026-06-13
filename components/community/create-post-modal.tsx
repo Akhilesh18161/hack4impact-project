@@ -80,6 +80,19 @@ export function CreatePostModal({ isOpen, onClose, onPostCreated }: CreatePostMo
     if (!user || !title.trim() || !description.trim() || selectedCategories.length === 0) return
 
     setIsSubmitting(true)
+
+    // Convert files to base64 data URLs for persistence
+    const mediaUrls = await Promise.all(
+      selectedFiles.map((file) => {
+        return new Promise<string>((resolve, reject) => {
+          const reader = new FileReader()
+          reader.onload = () => resolve(reader.result as string)
+          reader.onerror = reject
+          reader.readAsDataURL(file)
+        })
+      })
+    )
+
     const newPost = await communityClient.createPost({
       authorId: user.id,
       authorName: user.fullName,
@@ -88,7 +101,7 @@ export function CreatePostModal({ isOpen, onClose, onPostCreated }: CreatePostMo
       description: description.trim(),
       categories: selectedCategories,
       mediaType: selectedFiles.length > 0 ? mediaType : 'none',
-      mediaUrls: selectedFiles.length > 0 ? selectedFiles.map((f) => URL.createObjectURL(f)) : [],
+      mediaUrls: mediaUrls,
       mediaFileNames: selectedFiles.map((f) => f.name),
     })
 

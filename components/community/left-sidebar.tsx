@@ -15,7 +15,6 @@ export function LeftSidebar({ currentFilter, onFilterChange }: LeftSidebarProps)
   const navItems = [
     { id: 'all', label: 'All Posts', icon: MessageSquare },
     { id: 'trending', label: 'Trending', icon: TrendingUp },
-    { id: 'high-priority', label: 'High Priority', icon: AlertCircle },
     { id: 'newest', label: 'Newest', icon: Clock },
     { id: 'solved', label: 'Solved Issues', icon: CheckCircle2 },
     { id: 'my-posts', label: 'My Posts', icon: UserCircle },

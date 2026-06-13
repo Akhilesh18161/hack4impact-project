@@ -9,6 +9,7 @@ import {
   MapPin, Calendar, ThumbsUp, User, Tag, AlertTriangle,
   Image as ImageIcon, Video, Clock, ExternalLink,
 } from 'lucide-react'
+import { MapViewer } from './map-viewer'
 
 interface PulseDetailModalProps {
   report: PulseReport | null
@@ -147,14 +148,7 @@ export function PulseDetailModal({ report, onClose }: PulseDetailModalProps) {
                   <MapPin className="size-3.5" /> Location on Map
                 </h3>
                 <div className="rounded-xl overflow-hidden border border-border/60 shadow-sm">
-                  <iframe
-                    src={mapSrc}
-                    width="100%"
-                    height="200"
-                    style={{ border: 0 }}
-                    loading="lazy"
-                    title="Report Location Map"
-                  />
+                  <MapViewer lat={report.mapLat!} lng={report.mapLng!} height={200} />
                   <a
                     href={`https://www.openstreetmap.org/?mlat=${report.mapLat}&mlon=${report.mapLng}&zoom=16`}
                     target="_blank"

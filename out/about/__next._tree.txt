@@ -1,6 +1,6 @@
 :HL["/hack4impact-project/_next/static/chunks/066jf0nk75nic.css","style"]
-:HL["/hack4impact-project/_next/static/chunks/0fcaj_z3s9kg4.css","style"]
+:HL["/hack4impact-project/_next/static/chunks/0icjj_jziw65q.css","style"]
 :HL["/hack4impact-project/_next/static/media/797e433ab948586e-s.p.08e28id.o-okb.woff2","font",{"crossOrigin":"","type":"font/woff2"}]
 :HL["/hack4impact-project/_next/static/media/caa3a2e1cccd8315-s.p.09~u27dqhyhd6.woff2","font",{"crossOrigin":"","type":"font/woff2"}]
 :HL["https://unpkg.com/leaflet@1.9.4/dist/leaflet.css","style",{"crossOrigin":"","integrity":"sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="}]
-0:{"tree":{"name":"","param":null,"prefetchHints":16,"slots":{"children":{"name":"about","param":null,"prefetchHints":0,"slots":{"children":{"name":"__PAGE__","param":null,"prefetchHints":0,"slots":null}}}}},"staleTime":300,"buildId":"ckuFx4AfeFPciNdTEBghp"}
+0:{"tree":{"name":"","param":null,"prefetchHints":16,"slots":{"children":{"name":"about","param":null,"prefetchHints":0,"slots":{"children":{"name":"__PAGE__","param":null,"prefetchHints":0,"slots":null}}}}},"staleTime":300,"buildId":"IeQXDNQCe5Obj5b63K9nP"}

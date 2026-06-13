@@ -44,7 +44,7 @@ export function PulseFeed({ reports, onCardClick, showFilters = true }: PulseFee
           <div className="flex gap-2">
             <div className="relative">
               <select 
-                className="appearance-none pl-9 pr-8 py-2 bg-muted/50 border border-border/50 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary h-full"
+                className="appearance-none pl-9 pr-8 py-2 bg-card/80 backdrop-blur-md border border-input rounded-lg text-sm shadow-sm transition-colors hover:border-primary/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary h-full"
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value as any)}
               >
@@ -62,7 +62,7 @@ export function PulseFeed({ reports, onCardClick, showFilters = true }: PulseFee
             </div>
             
             <select 
-              className="px-4 py-2 bg-muted/50 border border-border/50 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+              className="px-4 py-2 bg-card/80 backdrop-blur-md border border-input rounded-lg text-sm shadow-sm transition-colors hover:border-primary/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value as any)}
             >

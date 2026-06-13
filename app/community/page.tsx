@@ -6,8 +6,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { UserCheck, MapPin, CheckCircle2, Calendar, Activity, ArrowRight, ShieldCheck, Image as ImageIcon } from 'lucide-react'
 import { motion } from 'framer-motion'
-import { MOCK_PULSE_REPORTS } from '@/lib/pulse-data'
+import { MOCK_PULSE_REPORTS, subscribeToReports, initializeReports } from '@/lib/pulse-data'
 import Link from 'next/link'
+import { useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 
 export default function CommunityPortalPage() {
@@ -22,6 +23,15 @@ export default function CommunityPortalPage() {
       </div>
     )
   }
+
+  const [, setTick] = useState(0)
+  
+  useEffect(() => {
+    const unsubscribe = subscribeToReports(() => setTick(t => t + 1))
+    initializeReports()
+    setTick(t => t + 1)
+    return unsubscribe
+  }, [])
 
   const resolvedReports = MOCK_PULSE_REPORTS.filter(r => r.status === 'Resolved' || r.status === 'Closed')
 

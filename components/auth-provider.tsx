@@ -7,7 +7,7 @@ interface AuthContextType {
   user: UserProfile | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ success: boolean; error: string | null }>;
-  signUp: (email: string, password: string, fullName: string, role: UserRole) => Promise<{ success: boolean; error: string | null }>;
+  signUp: (email: string, password: string, fullName: string, username: string, role: UserRole) => Promise<{ success: boolean; error: string | null }>;
   signOut: () => Promise<void>;
   isAdmin: boolean;
   isCommunityUser: boolean;
@@ -19,19 +19,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
-  // Sync session on mount
-  // Sync session on mount
   useEffect(() => {
     let subscription: any = null;
 
     const initSession = async () => {
       const session = await authClient.getSessionAsync();
-      if (session) {
-        setUser(session.user);
-      }
+      if (session) setUser(session.user);
       setLoading(false);
 
-      // Listen for auth changes
       const { supabase } = await import('@/lib/supabase');
       const { data } = supabase.auth.onAuthStateChange(async (event, session) => {
         if (session) {
@@ -45,10 +40,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     initSession();
-
-    return () => {
-      if (subscription) subscription.unsubscribe();
-    };
+    return () => { if (subscription) subscription.unsubscribe(); };
   }, []);
 
   const signIn = async (email: string, password: string) => {
@@ -63,9 +55,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { success: false, error };
   };
 
-  const signUp = async (email: string, password: string, fullName: string, role: UserRole) => {
+  const signUp = async (email: string, password: string, fullName: string, username: string, role: UserRole) => {
     setLoading(true);
-    const { user: newUser, error } = await authClient.signUp(email, password, fullName, role);
+    const { user: newUser, error } = await authClient.signUp(email, password, fullName, username, role);
     if (newUser) {
       setUser(newUser);
       setLoading(false);
@@ -94,8 +86,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
+  if (context === undefined) throw new Error('useAuth must be used within an AuthProvider');
   return context;
 }

@@ -36,7 +36,7 @@ function PulseContent() {
   /* ── Detail view ─────────────────────────────────────────────────────── */
   if (reportId) {
     const report = reports.find((r) => r.id === decodeURIComponent(reportId)) ?? null
-    return <PulseDetailClient report={report} />
+    return <PulseDetailClient report={report} reportId={decodeURIComponent(reportId)} />
   }
 
   /* ── Feed view ───────────────────────────────────────────────────────── */

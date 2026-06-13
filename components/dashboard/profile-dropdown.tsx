@@ -55,15 +55,15 @@ export function ProfileDropdown() {
   const menuItems = [
     {
       icon: User,
-      label: 'Profile',
+      label: 'Account',
       action: () => {
-        router.push('/profile')
+        router.push('/account')
         setOpen(false)
       },
     },
     {
       icon: Settings,
-      label: 'Account Settings',
+      label: 'Settings',
       action: () => {
         router.push('/settings')
         setOpen(false)

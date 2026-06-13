@@ -1,0 +1,1 @@
+self.__SSG_MANIFEST=new Set(["\u002Fanalytics\u002F[chart]","\u002Finsights\u002F[id]","\u002Fmetrics\u002F[metric]"]);self.__SSG_MANIFEST_CB&&self.__SSG_MANIFEST_CB()

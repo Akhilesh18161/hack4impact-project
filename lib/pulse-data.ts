@@ -111,11 +111,11 @@ export const pulseClient = {
     return mapDbToReport(data);
   },
 
-  editPulseReport: async (reportId: string, userId: string, updates: Partial<PulseReport>): Promise<PulseReport | null> => {
+  editPulseReport: async (reportId: string, userId: string, updates: Partial<PulseReport>, isAdmin: boolean = false): Promise<PulseReport | null> => {
     const report = await pulseClient.getReport(reportId);
-    if (!report || report.reporterId !== userId) return null;
+    if (!report || (!isAdmin && report.reporterId !== userId)) return null;
     
-    if (report.verificationStatus !== 'Pending Review' && report.verificationStatus !== 'Rejected') {
+    if (!isAdmin && report.verificationStatus !== 'Pending Review' && report.verificationStatus !== 'Rejected') {
       return null;
     }
 
@@ -134,11 +134,20 @@ export const pulseClient = {
     return mapDbToReport(data);
   },
 
-  deletePulseReport: async (reportId: string, userId: string): Promise<boolean> => {
+  deletePulseReport: async (reportId: string, userId: string, isAdmin: boolean = false): Promise<boolean> => {
+    console.log(`Attempting deletePulseReport for id=${reportId}, userId=${userId}, isAdmin=${isAdmin}`);
     const report = await pulseClient.getReport(reportId);
-    if (!report || report.reporterId !== userId) return false;
+    if (!report) {
+      console.log('deletePulseReport failed: report not found');
+      return false;
+    }
+    if (!isAdmin && report.reporterId !== userId) {
+      console.log(`deletePulseReport failed: not admin and reporterId (${report.reporterId}) != userId (${userId})`);
+      return false;
+    }
 
-    if (report.verificationStatus !== 'Pending Review' && report.verificationStatus !== 'Rejected') {
+    if (!isAdmin && report.verificationStatus !== 'Pending Review' && report.verificationStatus !== 'Rejected') {
+      console.log(`deletePulseReport failed: not admin and invalid verificationStatus (${report.verificationStatus})`);
       return false;
     }
 
@@ -147,6 +156,12 @@ export const pulseClient = {
       deleted_by: userId,
       deleted_at: new Date().toISOString()
     }).eq('id', reportId);
+
+    if (error) {
+      console.error('deletePulseReport failed at supabase update:', error);
+    } else {
+      console.log('deletePulseReport succeeded');
+    }
 
     return !error;
   },

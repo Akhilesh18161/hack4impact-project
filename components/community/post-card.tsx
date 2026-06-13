@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useAuth } from '@/components/auth-provider'
 import { Post, communityClient, UserReputation } from '@/lib/community-data'
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
@@ -65,7 +65,6 @@ const PRIORITY_COLORS: Record<string, string> = {
 }
 
 export function PostCard({ post, currentUserId, onPostUpdated, onExpandComments }: PostCardProps) {
-  const [isVoting, setIsVoting] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [isShareOpen, setIsShareOpen] = useState(false)
   const [isReportOpen, setIsReportOpen] = useState(false)
@@ -97,13 +96,85 @@ export function PostCard({ post, currentUserId, onPostUpdated, onExpandComments 
     setLocalShareCount(post.shareCount)
   }, [post.shareCount])
 
-  const handleVote = async (type: 'up' | 'down') => {
-    if (!currentUserId || isVoting) return
-    setIsVoting(true)
-    const updated = await communityClient.votePost(post.id, currentUserId, type)
-    if (updated) onPostUpdated(updated)
-    setIsVoting(false)
-  }
+  // ── Vote state ─────────────────────────────────────────────────────────────
+  // serverVoteRef = what the DB actually has (source of truth for computing display)
+  const serverVoteRef = useRef<'up' | 'down' | undefined>(userVote)
+  const serverUpRef   = useRef(post.upvotes)
+  const serverDownRef = useRef(post.downvotes)
+  // desiredVote = what the user INTENDS right now (may be mid-debounce)
+  const desiredVoteRef = useRef<'up' | 'down' | undefined>(userVote)
+  const voteTimerRef   = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Derive display counts from server truth + desired vote (never incrementally mutate)
+  const computeDisplayCounts = useCallback(
+    (desired: 'up' | 'down' | undefined) => {
+      let up   = serverUpRef.current
+      let down = serverDownRef.current
+      const sv = serverVoteRef.current
+      // Remove the currently-stored server vote contribution
+      if (sv === 'up')   up   = Math.max(0, up   - 1)
+      if (sv === 'down') down = Math.max(0, down - 1)
+      // Apply the desired vote
+      if (desired === 'up')   up   += 1
+      if (desired === 'down') down += 1
+      return { up, down }
+    },
+    [],
+  )
+
+  const [localUpvotes,   setLocalUpvotes]   = useState(() => computeDisplayCounts(userVote).up)
+  const [localDownvotes, setLocalDownvotes] = useState(() => computeDisplayCounts(userVote).down)
+  const [localUserVote,  setLocalUserVote]  = useState<'up' | 'down' | undefined>(userVote)
+
+  // Sync when a server update comes in (after API resolves)
+  useEffect(() => {
+    const sv = currentUserId ? post.votedBy[currentUserId] : undefined
+    serverVoteRef.current  = sv
+    serverUpRef.current    = post.upvotes
+    serverDownRef.current  = post.downvotes
+    desiredVoteRef.current = sv
+    const counts = computeDisplayCounts(sv)
+    setLocalUpvotes(counts.up)
+    setLocalDownvotes(counts.down)
+    setLocalUserVote(sv)
+  }, [post.upvotes, post.downvotes, post.votedBy, currentUserId, computeDisplayCounts])
+
+  const handleVote = useCallback((type: 'up' | 'down') => {
+    if (!currentUserId) return
+
+    // Toggle: same button → remove vote; different → switch
+    const current = desiredVoteRef.current
+    const next: 'up' | 'down' | undefined = current === type ? undefined : type
+    desiredVoteRef.current = next
+
+    // Optimistic display (derived, never incremental)
+    const counts = computeDisplayCounts(next)
+    setLocalUpvotes(counts.up)
+    setLocalDownvotes(counts.down)
+    setLocalUserVote(next)
+
+    // Debounce: cancel any in-flight intent and schedule one final API call
+    if (voteTimerRef.current) clearTimeout(voteTimerRef.current)
+    voteTimerRef.current = setTimeout(async () => {
+      const desired = desiredVoteRef.current
+      const sv      = serverVoteRef.current
+      if (desired === sv) return // user ended up back at original state — no-op
+
+      // Determine which vote type to send to toggle to the desired state
+      const actionType = desired === undefined ? sv! : desired
+      const updated = await communityClient.votePost(post.id, currentUserId, actionType)
+      if (updated) {
+        onPostUpdated(updated)
+      } else {
+        // Revert to last known server state on failure
+        const revertCounts = computeDisplayCounts(sv)
+        setLocalUpvotes(revertCounts.up)
+        setLocalDownvotes(revertCounts.down)
+        setLocalUserVote(sv)
+        desiredVoteRef.current = sv
+      }
+    }, 350)
+  }, [currentUserId, post.id, computeDisplayCounts, onPostUpdated])
 
   const handleSave = async () => {
     if (!currentUserId || isSaving) return
@@ -259,27 +330,26 @@ export function PostCard({ post, currentUserId, onPostUpdated, onExpandComments 
                   variant="ghost"
                   size="sm"
                   onClick={() => handleVote('up')}
-                  disabled={isVoting}
                   className={cn(
-                    'h-8 px-2.5 rounded-l-full rounded-r-none gap-1.5',
-                    userVote === 'up' ? 'text-primary bg-primary/10 hover:bg-primary/20' : 'text-muted-foreground hover:text-primary hover:bg-primary/10'
+                    'h-8 px-2.5 rounded-l-full rounded-r-none gap-1.5 transition-all',
+                    localUserVote === 'up' ? 'text-primary bg-primary/10 hover:bg-primary/20' : 'text-muted-foreground hover:text-primary hover:bg-primary/10'
                   )}
                 >
-                  <ThumbsUp className={cn('size-3.5', userVote === 'up' && 'fill-primary')} />
-                  <span className="text-xs font-semibold">{post.netScore !== 0 ? post.netScore : 'Vote'}</span>
+                  <ThumbsUp className={cn('size-3.5 transition-all', localUserVote === 'up' && 'fill-primary')} />
+                  <span className="text-xs font-semibold">{localUpvotes > 0 ? localUpvotes : 'Like'}</span>
                 </Button>
                 <div className="w-[1px] h-4 bg-border/50" />
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => handleVote('down')}
-                  disabled={isVoting}
                   className={cn(
-                    'h-8 px-2.5 rounded-r-full rounded-l-none gap-1.5',
-                    userVote === 'down' ? 'text-rose-500 bg-rose-500/10 hover:bg-rose-500/20' : 'text-muted-foreground hover:text-rose-500 hover:bg-rose-500/10'
+                    'h-8 px-2.5 rounded-r-full rounded-l-none gap-1.5 transition-all',
+                    localUserVote === 'down' ? 'text-rose-500 bg-rose-500/10 hover:bg-rose-500/20' : 'text-muted-foreground hover:text-rose-500 hover:bg-rose-500/10'
                   )}
                 >
-                  <ThumbsDown className={cn('size-3.5', userVote === 'down' && 'fill-rose-500')} />
+                  <ThumbsDown className={cn('size-3.5 mt-0.5 transition-all', localUserVote === 'down' && 'fill-rose-500')} />
+                  <span className="text-xs font-semibold">{localDownvotes > 0 ? localDownvotes : 'Dislike'}</span>
                 </Button>
               </div>
 

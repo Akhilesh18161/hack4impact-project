@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
+import { useAuth } from '@/components/auth-provider'
 import { communityClient, Post } from '@/lib/community-data'
 
 export function EditPostModal({
@@ -20,10 +21,12 @@ export function EditPostModal({
 }) {
   const [description, setDescription] = useState(post.description)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const { user } = useAuth()
+  const isAdmin = user?.role === 'admin'
 
   const handleSubmit = async () => {
     setIsSubmitting(true)
-    const updated = await communityClient.editPost(post.id, currentUserId, { description })
+    const updated = await communityClient.editPost(post.id, currentUserId, { description }, isAdmin)
     setIsSubmitting(false)
     if (updated) {
       onSuccess(updated)
@@ -179,10 +182,12 @@ export function DeletePostModal({
   currentUserId: string
 }) {
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const { user } = useAuth()
+  const isAdmin = user?.role === 'admin'
 
   const handleSubmit = async () => {
     setIsSubmitting(true)
-    const success = await communityClient.deletePost(post.id, currentUserId)
+    const success = await communityClient.deletePost(post.id, currentUserId, isAdmin)
     setIsSubmitting(false)
     if (success) {
       onSuccess()

@@ -21,6 +21,8 @@ import { ReputationBadge } from './reputation-badge'
 
 interface CommentSectionProps {
   postId: string
+  postAuthorId?: string
+  onCommentChange?: (delta: number) => void
 }
 
 function getInitials(name: string) {
@@ -46,10 +48,11 @@ interface CommentNodeProps {
   currentUserId?: string
   currentUserName?: string
   currentUserRole?: string
+  postAuthorId?: string
   depth?: number
   onCommentAdded: (comment: Comment) => void
   onCommentUpdated: (comment: Comment) => void
-  onCommentDeleted: (commentId: string) => void
+  onCommentDeleted: (purgedIds: string[], mode: 'hard' | 'soft') => void
 }
 
 function CommentNode({
@@ -58,6 +61,7 @@ function CommentNode({
   currentUserId,
   currentUserName,
   currentUserRole,
+  postAuthorId,
   depth = 0,
   onCommentAdded,
   onCommentUpdated,
@@ -65,6 +69,9 @@ function CommentNode({
 }: CommentNodeProps) {
   const replies = allComments.filter((c) => c.parentId === comment.id)
   const isOwn = currentUserId === comment.authorId
+  const isCurrentUserAdmin = currentUserRole === 'admin'
+  const isPostAuthor = !!currentUserId && currentUserId === postAuthorId
+  const canDelete = isOwn || isCurrentUserAdmin || isPostAuthor
   const isAdmin = comment.authorRole === 'admin'
   const userVote = currentUserId ? (comment.votedBy?.[currentUserId] ?? undefined) : undefined
 
@@ -121,8 +128,9 @@ function CommentNode({
   const handleDelete = async () => {
     if (!currentUserId || isDeleting) return
     setIsDeleting(true)
-    const ok = await communityClient.deleteComment(comment.id, currentUserId)
-    if (ok) onCommentDeleted(comment.id)
+    const isPrivileged = isCurrentUserAdmin || isPostAuthor
+    const result = await communityClient.deleteComment(comment.id, currentUserId, isPrivileged)
+    if (result) onCommentDeleted(result.purgedIds, result.mode)
     setIsDeleting(false)
   }
 
@@ -244,27 +252,33 @@ function CommentNode({
                     </button>
                   )}
 
-                  {/* Owner controls */}
-                  {isOwn && !comment.isDeleted && (
+                  {/* Comment controls */}
+                  {!comment.isDeleted && (
                     <>
-                      <button
-                        onClick={() => setIsEditing(true)}
-                        className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-semibold text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-                      >
-                        <Pencil className="size-3" /> Edit
-                      </button>
-                      <button
-                        onClick={handleDelete}
-                        disabled={isDeleting}
-                        className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-semibold text-muted-foreground hover:text-rose-500 hover:bg-rose-500/8 transition-colors disabled:opacity-40"
-                      >
-                        {isDeleting ? (
-                          <Loader2 className="size-3 animate-spin" />
-                        ) : (
-                          <Trash2 className="size-3" />
-                        )}
-                        Delete
-                      </button>
+                      {/* Only the comment author can edit */}
+                      {isOwn && (
+                        <button
+                          onClick={() => setIsEditing(true)}
+                          className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-semibold text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                        >
+                          <Pencil className="size-3" /> Edit
+                        </button>
+                      )}
+                      {/* Comment author, post author, or admin can delete */}
+                      {canDelete && (
+                        <button
+                          onClick={handleDelete}
+                          disabled={isDeleting}
+                          className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-semibold text-muted-foreground hover:text-rose-500 hover:bg-rose-500/8 transition-colors disabled:opacity-40"
+                        >
+                          {isDeleting ? (
+                            <Loader2 className="size-3 animate-spin" />
+                          ) : (
+                            <Trash2 className="size-3" />
+                          )}
+                          Delete
+                        </button>
+                      )}
                     </>
                   )}
                 </div>
@@ -306,10 +320,10 @@ function CommentNode({
             </div>
           </div>
         ) : (
-          // Deleted comment placeholder
-          <div className="flex items-center gap-2 py-1">
-            <div className="size-7 shrink-0 rounded-full bg-muted" />
-            <p className="text-xs italic text-muted-foreground/50">[comment deleted]</p>
+          // Deleted comment placeholder — keeps thread structure intact
+          <div className="flex items-center gap-2 py-1.5">
+            <div className="size-7 shrink-0 rounded-full bg-muted/50 border border-dashed border-border" />
+            <p className="text-xs italic text-muted-foreground/40">This comment was deleted.</p>
           </div>
         )}
 
@@ -324,6 +338,7 @@ function CommentNode({
                 currentUserId={currentUserId}
                 currentUserName={currentUserName}
                 currentUserRole={currentUserRole}
+                postAuthorId={postAuthorId}
                 depth={depth + 1}
                 onCommentAdded={onCommentAdded}
                 onCommentUpdated={onCommentUpdated}
@@ -339,7 +354,7 @@ function CommentNode({
 
 // ── CommentSection ─────────────────────────────────────────────────────────────
 
-export function CommentSection({ postId }: CommentSectionProps) {
+export function CommentSection({ postId, postAuthorId, onCommentChange }: CommentSectionProps) {
   const { user } = useAuth()
   const [comments, setComments] = useState<Comment[]>([])
   const [newComment, setNewComment] = useState('')
@@ -370,22 +385,31 @@ export function CommentSection({ postId }: CommentSectionProps) {
     setComments((prev) => [...prev, comment])
     setNewComment('')
     setIsSubmitting(false)
+    if (onCommentChange) onCommentChange(1)
   }
 
   const handleCommentAdded = (comment: Comment) => {
     setComments((prev) => [...prev, comment])
+    if (onCommentChange) onCommentChange(1)
   }
 
   const handleCommentUpdated = (updated: Comment) => {
     setComments((prev) => prev.map((c) => (c.id === updated.id ? updated : c)))
   }
 
-  const handleCommentDeleted = (commentId: string) => {
-    setComments((prev) =>
-      prev.map((c) =>
-        c.id === commentId ? { ...c, isDeleted: true, content: '[deleted]' } : c,
-      ),
-    )
+  const handleCommentDeleted = (purgedIds: string[], mode: 'hard' | 'soft') => {
+    if (mode === 'hard') {
+      // Completely remove from local state (no placeholder)
+      setComments((prev) => prev.filter((c) => !purgedIds.includes(c.id)))
+    } else {
+      // Soft: replace content with placeholder, keep in tree
+      setComments((prev) =>
+        prev.map((c) =>
+          purgedIds.includes(c.id) ? { ...c, isDeleted: true, content: '[deleted]' } : c,
+        ),
+      )
+    }
+    if (onCommentChange) onCommentChange(-1)
   }
 
   const rootComments = comments.filter((c) => !c.parentId)
@@ -470,6 +494,7 @@ export function CommentSection({ postId }: CommentSectionProps) {
               currentUserId={user?.id}
               currentUserName={user?.fullName}
               currentUserRole={user?.role}
+              postAuthorId={postAuthorId}
               onCommentAdded={handleCommentAdded}
               onCommentUpdated={handleCommentUpdated}
               onCommentDeleted={handleCommentDeleted}

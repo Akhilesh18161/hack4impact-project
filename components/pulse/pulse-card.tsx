@@ -1,12 +1,15 @@
 'use client'
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { PulseReport } from '@/lib/pulse-data';
 import { StatusBadge } from './status-badge';
-import { MapPin, Calendar, ThumbsUp, ImageIcon } from 'lucide-react';
+import { MapPin, Calendar, ThumbsUp, ImageIcon, Edit2, Trash2, FileEdit, FileX } from 'lucide-react';
+import { useAuth } from '@/components/auth-provider';
+import { EditPulseModal, DeletePulseModal, RequestModificationModal, RequestRemovalModal } from './content-action-modals';
 
 interface PulseCardProps {
   report: PulseReport;
@@ -15,8 +18,22 @@ interface PulseCardProps {
 
 export function PulseCard({ report, onClick }: PulseCardProps) {
   const router = useRouter();
+  const { user } = useAuth();
+  
+  const [isEditOpen, setIsEditOpen] = useState(false)
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false)
+  const [isModReqOpen, setIsModReqOpen] = useState(false)
+  const [isRemReqOpen, setIsRemReqOpen] = useState(false)
 
-  const handleClick = () => {
+  const isAdmin = user?.role === 'admin'
+  const isAuthor = user?.id === report.reporterId || isAdmin
+  const canEditDirectly = isAdmin || report.verificationStatus === 'Pending Review' || report.verificationStatus === 'Rejected'
+
+  const handleClick = (e: React.MouseEvent) => {
+    // Only navigate if we didn't click an action button
+    const target = e.target as HTMLElement;
+    if (target.closest('button')) return;
+    
     if (onClick) {
       onClick(report);
     } else {
@@ -34,6 +51,7 @@ export function PulseCard({ report, onClick }: PulseCardProps) {
   };
 
   return (
+    <>
     <Card 
       className="group overflow-hidden flex flex-col h-full hover:shadow-lg transition-all duration-300 border-border/50 hover:border-primary/30 bg-card/50 backdrop-blur-sm cursor-pointer"
       onClick={handleClick}
@@ -60,7 +78,32 @@ export function PulseCard({ report, onClick }: PulseCardProps) {
           <Badge variant="outline" className="text-[10px] uppercase tracking-wider font-bold">
             {report.category}
           </Badge>
-          <span className="text-[10px] font-mono text-muted-foreground">{report.id}</span>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-mono text-muted-foreground mr-1">{report.id}</span>
+            {isAuthor && user && (
+              <div className="flex items-center" onClick={e => e.stopPropagation()}>
+                {canEditDirectly ? (
+                  <>
+                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-muted-foreground hover:text-primary" onClick={() => setIsEditOpen(true)} title="Edit Report">
+                      <Edit2 className="size-3.5" />
+                    </Button>
+                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive" onClick={() => setIsDeleteOpen(true)} title="Delete Report">
+                      <Trash2 className="size-3.5" />
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-amber-500/70 hover:text-amber-500" onClick={() => setIsModReqOpen(true)} title="Request Change">
+                      <FileEdit className="size-3.5" />
+                    </Button>
+                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-destructive/70 hover:text-destructive" onClick={() => setIsRemReqOpen(true)} title="Request Removal">
+                      <FileX className="size-3.5" />
+                    </Button>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
         </div>
         <h3 className="font-bold text-base line-clamp-2 leading-tight group-hover:text-primary transition-colors">
           {report.title}
@@ -96,5 +139,37 @@ export function PulseCard({ report, onClick }: PulseCardProps) {
         </div>
       </CardFooter>
     </Card>
+
+    {isAuthor && user && (
+      <>
+        <EditPulseModal
+          report={report}
+          isOpen={isEditOpen}
+          onClose={() => setIsEditOpen(false)}
+          onSuccess={() => window.location.reload()}
+          currentUserId={user.id}
+        />
+        <DeletePulseModal
+          report={report}
+          isOpen={isDeleteOpen}
+          onClose={() => setIsDeleteOpen(false)}
+          onSuccess={() => window.location.reload()}
+          currentUserId={user.id}
+        />
+        <RequestModificationModal
+          report={report}
+          isOpen={isModReqOpen}
+          onClose={() => setIsModReqOpen(false)}
+          currentUserId={user.id}
+        />
+        <RequestRemovalModal
+          report={report}
+          isOpen={isRemReqOpen}
+          onClose={() => setIsRemReqOpen(false)}
+          currentUserId={user.id}
+        />
+      </>
+    )}
+    </>
   );
 }

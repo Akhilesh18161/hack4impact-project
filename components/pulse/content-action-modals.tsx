@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
+import { useAuth } from '@/components/auth-provider'
 import { pulseClient, PulseReport } from '@/lib/pulse-data'
 
 export function EditPulseModal({
@@ -20,10 +21,12 @@ export function EditPulseModal({
 }) {
   const [description, setDescription] = useState(report.description)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const { user } = useAuth()
+  const isAdmin = user?.role === 'admin'
 
   const handleSubmit = async () => {
     setIsSubmitting(true)
-    const updated = await pulseClient.editPulseReport(report.id, currentUserId, { description })
+    const updated = await pulseClient.editPulseReport(report.id, currentUserId, { description }, isAdmin)
     setIsSubmitting(false)
     if (updated) {
       onSuccess(updated)
@@ -179,10 +182,12 @@ export function DeletePulseModal({
   currentUserId: string
 }) {
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const { user } = useAuth()
+  const isAdmin = user?.role === 'admin'
 
   const handleSubmit = async () => {
     setIsSubmitting(true)
-    const success = await pulseClient.deletePulseReport(report.id, currentUserId)
+    const success = await pulseClient.deletePulseReport(report.id, currentUserId, isAdmin)
     setIsSubmitting(false)
     if (success) {
       onSuccess()

@@ -119,6 +119,30 @@ function computePriority(netScore: number, commentCount: number): PriorityLevel 
   return 'Medium';
 }
 
+export function computeTrendingScore(post: Pick<Post, 'netScore' | 'commentCount' | 'shareCount' | 'createdAt'>): number {
+  // Base weights
+  const priorityWeight = 1.0;
+  const commentWeight = 2.0;
+  const shareWeight = 3.0;
+
+  // Recency decay: Posts lose value as they age
+  const ageMs = Date.now() - new Date(post.createdAt).getTime();
+  const ageDays = ageMs / (1000 * 60 * 60 * 24);
+  
+  // Halflife logic: Score halves every 3 days. 
+  // e.g. ageDays = 3 => decay = 0.5, ageDays = 6 => decay = 0.25
+  const timeDecay = Math.pow(0.5, ageDays / 3); 
+
+  // Base score
+  const baseScore = 
+    (post.netScore * priorityWeight) + 
+    (post.commentCount * commentWeight) + 
+    (post.shareCount * shareWeight);
+
+  // Trending is heavily biased toward recency, but also overall activity
+  return baseScore * timeDecay;
+}
+
 function getBadgeFromScore(score: number): ContributorBadge {
   if (score >= 500) return 'Community Leader';
   if (score >= 200) return 'Top Contributor';
@@ -243,11 +267,11 @@ export const communityClient = {
     };
   },
 
-  editPost: async (postId: string, userId: string, updates: Partial<Post>): Promise<Post | null> => {
+  editPost: async (postId: string, userId: string, updates: Partial<Post>, isAdmin: boolean = false): Promise<Post | null> => {
     const post = await communityClient.getPost(postId);
-    if (!post || post.authorId !== userId) return null;
+    if (!post || (!isAdmin && post.authorId !== userId)) return null;
     
-    if (post.verificationStatus !== 'Pending Review' && post.verificationStatus !== 'Rejected') {
+    if (!isAdmin && post.verificationStatus !== 'Pending Review' && post.verificationStatus !== 'Rejected') {
       return null;
     }
 
@@ -265,11 +289,11 @@ export const communityClient = {
     return communityClient.getPost(postId);
   },
 
-  deletePost: async (postId: string, userId: string): Promise<boolean> => {
+  deletePost: async (postId: string, userId: string, isAdmin: boolean = false): Promise<boolean> => {
     const post = await communityClient.getPost(postId);
-    if (!post || post.authorId !== userId) return false;
+    if (!post || (!isAdmin && post.authorId !== userId)) return false;
 
-    if (post.verificationStatus !== 'Pending Review' && post.verificationStatus !== 'Rejected') {
+    if (!isAdmin && post.verificationStatus !== 'Pending Review' && post.verificationStatus !== 'Rejected') {
       return false;
     }
 
@@ -524,22 +548,57 @@ export const communityClient = {
     return comments.find(c => c.id === commentId) || null;
   },
 
-  deleteComment: async (commentId: string, userId: string): Promise<boolean> => {
-    const comments = await communityClient.getAllComments();
-    const comment = comments.find(c => c.id === commentId && c.authorId === userId);
+  deleteComment: async (
+    commentId: string,
+    userId: string,
+    isPrivileged = false,
+  ): Promise<{ mode: 'hard' | 'soft'; purgedIds: string[] } | false> => {
+    const allComments = await communityClient.getAllComments();
+    const comment = isPrivileged
+      ? allComments.find(c => c.id === commentId)
+      : allComments.find(c => c.id === commentId && c.authorId === userId);
     if (!comment) return false;
 
-    await supabase.from('comments').update({
-      content: '[deleted]',
-      is_deleted: true
-    }).eq('id', commentId);
+    const hasReplies = allComments.some(c => c.parentId === commentId);
 
-    const post = await communityClient.getPost(comment.postId);
-    if (post && post.commentCount > 0) {
-      await supabase.from('posts').update({ comment_count: post.commentCount - 1 }).eq('id', post.id);
+    if (hasReplies) {
+      // Soft-delete: leave placeholder so replies stay visible
+      await supabase.from('comments').update({ content: '[deleted]', is_deleted: true }).eq('id', commentId);
+      return { mode: 'soft', purgedIds: [commentId] };
     }
 
-    return true;
+    // Hard-delete: no replies, remove from DB entirely
+    const purgedIds: string[] = [commentId];
+    await supabase.from('comments').delete().eq('id', commentId);
+
+    // Cascade up: if parent is a soft-deleted orphan (no remaining replies), hard-delete it too
+    let parentId = comment.parentId;
+    while (parentId) {
+      const parent = allComments.find(c => c.id === parentId);
+      if (!parent) break;
+      // Remaining replies for this parent (excluding IDs already purged)
+      const remainingReplies = allComments.filter(
+        c => c.parentId === parent.id && !purgedIds.includes(c.id),
+      );
+      if (parent.isDeleted && remainingReplies.length === 0) {
+        await supabase.from('comments').delete().eq('id', parent.id);
+        purgedIds.push(parent.id);
+        parentId = parent.parentId;
+      } else {
+        break; // parent is still active or still has real replies, stop cascading
+      }
+    }
+
+    // Decrement post commentCount by the number of hard-deleted entries
+    const post = await communityClient.getPost(comment.postId);
+    if (post && post.commentCount > 0) {
+      await supabase
+        .from('posts')
+        .update({ comment_count: Math.max(0, post.commentCount - purgedIds.length) })
+        .eq('id', post.id);
+    }
+
+    return { mode: 'hard', purgedIds };
   },
 
   // ── Reports ────────────────────────────────────────────────────────────────

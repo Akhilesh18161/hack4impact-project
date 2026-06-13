@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Post, Category, communityClient } from '@/lib/community-data'
+import { Post, Category, communityClient, computeTrendingScore } from '@/lib/community-data'
 import { useAuth } from '@/components/auth-provider'
 import { PostCard } from './post-card'
 import { CreatePostModal } from './create-post-modal'
@@ -115,7 +115,7 @@ export function PostFeed({ currentFilter, selectedCategory, onPostsLoaded }: Pos
         result.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
         break
       case 'trending':
-        result.sort((a, b) => b.commentCount - a.commentCount)
+        result.sort((a, b) => computeTrendingScore(b) - computeTrendingScore(a))
         break
       case 'high-priority':
         result.sort((a, b) => {
@@ -129,9 +129,12 @@ export function PostFeed({ currentFilter, selectedCategory, onPostsLoaded }: Pos
           return order[a.priority] - order[b.priority]
         })
         break
-      default: // top
+      default: // top / recommended
+        // For 'top', we heavily weight the raw Priority Score over recency
         result.sort((a, b) => {
-          if (b.netScore !== a.netScore) return b.netScore - a.netScore
+          const scoreA = (a.netScore * 1.5) + (a.commentCount * 1.0) + (a.shareCount * 2.0)
+          const scoreB = (b.netScore * 1.5) + (b.commentCount * 1.0) + (b.shareCount * 2.0)
+          if (scoreB !== scoreA) return scoreB - scoreA
           return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
         })
     }
@@ -291,7 +294,13 @@ export function PostFeed({ currentFilter, selectedCategory, onPostsLoaded }: Pos
                   onExpandComments={toggleComments}
                 />
                 {expandedComments[post.id] && (
-                  <CommentSection postId={post.id} />
+                  <CommentSection 
+                    postId={post.id}
+                    postAuthorId={post.authorId}
+                    onCommentChange={(delta) => {
+                      handlePostUpdated({ ...post, commentCount: Math.max(0, post.commentCount + delta) })
+                    }}
+                  />
                 )}
               </div>
             ))}

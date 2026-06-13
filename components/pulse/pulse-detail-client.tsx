@@ -10,7 +10,7 @@ import {
   Clock, CheckCircle2, ImageIcon, Video, X, ExternalLink,
   Edit2, Trash2, FileEdit, FileX
 } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { useAuth } from '@/components/auth-provider'
 import { EditPulseModal, RequestModificationModal, RequestRemovalModal, DeletePulseModal } from './content-action-modals'
@@ -25,13 +25,29 @@ const priorityColors: Record<string, string> = {
 
 interface Props {
   report: PulseReport | null
+  reportId?: string
 }
 
-export function PulseDetailClient({ report: initialReport }: Props) {
+export function PulseDetailClient({ report: initialReport, reportId }: Props) {
   const router = useRouter()
   const { user } = useAuth()
   const [report, setReport] = useState<PulseReport | null>(initialReport)
+  const [isLoading, setIsLoading] = useState(!initialReport && !!reportId)
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null)
+  
+  // Fetch if missing
+  useEffect(() => {
+    if (initialReport) {
+      setReport(initialReport)
+      setIsLoading(false)
+    } else if (reportId) {
+      setIsLoading(true)
+      pulseClient.getReport(decodeURIComponent(reportId)).then((data) => {
+        setReport(data)
+        setIsLoading(false)
+      })
+    }
+  }, [initialReport, reportId])
   
   // Author action modals
   const [isEditOpen, setIsEditOpen] = useState(false)
@@ -49,6 +65,15 @@ export function PulseDetailClient({ report: initialReport }: Props) {
 
   const handleDeleteSuccess = () => {
     router.push('/pulse')
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4">
+        <div className="size-8 rounded-full border-2 border-primary border-r-transparent animate-spin" />
+        <p className="text-muted-foreground">Loading report...</p>
+      </div>
+    )
   }
 
   if (!report) {

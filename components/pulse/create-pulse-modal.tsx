@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { MapPin, Image as ImageIcon, Video, AlertTriangle, X, Map } from 'lucide-react'
 import { PulseCategory, PriorityLevel } from '@/lib/pulse-data'
 import { MapPicker } from './map-picker'
+import { useAuth } from '@/components/auth-provider'
 
 interface CreatePulseModalProps {
   isOpen: boolean
@@ -15,6 +16,7 @@ interface CreatePulseModalProps {
 }
 
 export function CreatePulseModal({ isOpen, onClose, onSubmit }: CreatePulseModalProps) {
+  const { user } = useAuth()
   const [title,         setTitle]         = useState('')
   const [description,   setDescription]   = useState('')
   const [category,      setCategory]      = useState<PulseCategory>('Infrastructure')
@@ -72,7 +74,8 @@ export function CreatePulseModal({ isOpen, onClose, onSubmit }: CreatePulseModal
         title, description, category,
         otherCategory: category === 'Other' ? otherCategory : undefined,
         location, mapLat, mapLng, priority,
-        reporterName: 'Current User',
+        reporterName: user?.fullName || 'Anonymous Citizen',
+        reporterId: user?.id,
         images,
         videos: videos.map((v) => v.url),
       })

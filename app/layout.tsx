@@ -5,6 +5,7 @@ import { ThemeProvider } from '@/components/theme-provider'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { AuthProvider } from '@/components/auth-provider'
 import { DashboardHeader } from '@/components/dashboard/header'
+import { Footer } from '@/components/dashboard/footer'
 
 const geistSans = Geist({ variable: '--font-geist-sans', subsets: ['latin'] })
 const geistMono = Geist_Mono({
@@ -57,6 +58,7 @@ export default function RootLayout({
                 <div className="flex-1">
                   {children}
                 </div>
+                <Footer />
               </div>
             </TooltipProvider>
           </AuthProvider>

@@ -16,7 +16,7 @@ export default function CommunityHubPage() {
             currentFilter={currentFilter} 
             onFilterChange={setCurrentFilter} 
           />
-          <PostFeed currentFilter={currentFilter} />
+          <PostFeed currentFilter={currentFilter} selectedCategory={null} />
           <RightSidebar />
         </div>
       </div>

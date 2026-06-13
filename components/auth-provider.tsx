@@ -20,12 +20,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState<boolean>(true);
 
   // Sync session on mount
+  // Sync session on mount
   useEffect(() => {
-    const session = authClient.getSession();
-    if (session) {
-      setUser(session.user);
-    }
-    setLoading(false);
+    let subscription: any = null;
+
+    const initSession = async () => {
+      const session = await authClient.getSessionAsync();
+      if (session) {
+        setUser(session.user);
+      }
+      setLoading(false);
+
+      // Listen for auth changes
+      const { supabase } = await import('@/lib/supabase');
+      const { data } = supabase.auth.onAuthStateChange(async (event, session) => {
+        if (session) {
+          const s = await authClient.getSessionAsync();
+          setUser(s?.user || null);
+        } else {
+          setUser(null);
+        }
+      });
+      subscription = data.subscription;
+    };
+
+    initSession();
+
+    return () => {
+      if (subscription) subscription.unsubscribe();
+    };
   }, []);
 
   const signIn = async (email: string, password: string) => {

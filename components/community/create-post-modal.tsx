@@ -93,22 +93,28 @@ export function CreatePostModal({ isOpen, onClose, onPostCreated }: CreatePostMo
       })
     )
 
-    const newPost = await communityClient.createPost({
-      authorId: user.id,
-      authorName: user.fullName,
-      authorRole: user.role,
-      title: title.trim(),
-      description: description.trim(),
-      categories: selectedCategories,
-      mediaType: selectedFiles.length > 0 ? mediaType : 'none',
-      mediaUrls: mediaUrls,
-      mediaFileNames: selectedFiles.map((f) => f.name),
-    })
+    try {
+      const newPost = await communityClient.createPost({
+        authorId: user.id,
+        authorName: user.fullName,
+        authorRole: user.role,
+        title: title.trim(),
+        description: description.trim(),
+        categories: selectedCategories,
+        mediaType: selectedFiles.length > 0 ? mediaType : 'none',
+        mediaUrls: mediaUrls,
+        mediaFileNames: selectedFiles.map((f) => f.name),
+      })
 
-    setIsSubmitting(false)
-    resetForm()
-    onPostCreated(newPost)
-    onClose()
+      setIsSubmitting(false)
+      resetForm()
+      onPostCreated(newPost)
+      onClose()
+    } catch (err: any) {
+      setIsSubmitting(false)
+      alert("Failed to create post: " + (err.message || JSON.stringify(err)))
+      console.error(err)
+    }
   }
 
   const resetForm = () => {

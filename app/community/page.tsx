@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { UserCheck, MapPin, CheckCircle2, Calendar, Activity, ArrowRight, ShieldCheck, Image as ImageIcon } from 'lucide-react'
 import { motion } from 'framer-motion'
-import { MOCK_PULSE_REPORTS, subscribeToReports, initializeReports } from '@/lib/pulse-data'
+import { pulseClient, PulseReport } from '@/lib/pulse-data'
 import Link from 'next/link'
 import { useEffect } from 'react'
 import { Button } from '@/components/ui/button'
@@ -24,16 +24,20 @@ export default function CommunityPortalPage() {
     )
   }
 
-  const [, setTick] = useState(0)
+  const [resolvedReports, setResolvedReports] = useState<PulseReport[]>([])
   
+  const loadReports = async () => {
+    const data = await pulseClient.getReports()
+    setResolvedReports(data.filter(r => r.status === 'Resolved' || r.status === 'Closed'))
+  }
+
   useEffect(() => {
-    const unsubscribe = subscribeToReports(() => setTick(t => t + 1))
-    initializeReports()
-    setTick(t => t + 1)
+    loadReports()
+    const unsubscribe = pulseClient.subscribeToReports(() => {
+      loadReports()
+    })
     return unsubscribe
   }, [])
-
-  const resolvedReports = MOCK_PULSE_REPORTS.filter(r => r.status === 'Resolved' || r.status === 'Closed')
 
   return (
     <div className="mx-auto max-w-5xl p-4 sm:p-6 lg:p-8 mt-8">

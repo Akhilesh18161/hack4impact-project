@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ShieldCheck, Settings, Users, BarChart3, BellRing, ClipboardList, Activity, MapPin, CheckCircle2, Image as ImageIcon, ExternalLink, Flag, PlusCircle } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useRouter } from 'next/navigation'
-import { MOCK_PULSE_REPORTS, updatePulseReportStatus, updatePulseReportPriority, addAdminUpdate, PulseStatus, PriorityLevel, initializeReports, subscribeToReports } from '@/lib/pulse-data'
+import { pulseClient, PulseStatus, PriorityLevel, PulseReport } from '@/lib/pulse-data'
 import { StatusBadge } from '@/components/pulse/status-badge'
 import { MapViewer } from '@/components/pulse/map-viewer'
 
@@ -39,34 +39,38 @@ export default function AdminPortalPage() {
     }
   }
 
-  const [reports, setReports] = useState(MOCK_PULSE_REPORTS)
+  const [reports, setReports] = useState<PulseReport[]>([])
   const [selectedReportId, setSelectedReportId] = useState<string | null>(null)
   const [newUpdateText, setNewUpdateText] = useState('')
 
+  const loadReports = async () => {
+    const data = await pulseClient.getReports()
+    setReports(data)
+  }
+
   React.useEffect(() => {
-    const unsubscribe = subscribeToReports(() => {
-      setReports([...MOCK_PULSE_REPORTS])
+    loadReports()
+    const unsubscribe = pulseClient.subscribeToReports(() => {
+      loadReports()
     })
-    initializeReports()
-    setReports([...MOCK_PULSE_REPORTS])
     return unsubscribe
   }, [])
 
-  const handleUpdateStatus = (id: string, newStatus: PulseStatus) => {
-    updatePulseReportStatus(id, newStatus)
-    setReports([...MOCK_PULSE_REPORTS])
+  const handleUpdateStatus = async (id: string, newStatus: PulseStatus, resolutionSummary?: string) => {
+    await pulseClient.updateStatus(id, newStatus, resolutionSummary)
+    loadReports()
   }
 
-  const handleUpdatePriority = (id: string, priority: PriorityLevel) => {
-    updatePulseReportPriority(id, priority)
-    setReports([...MOCK_PULSE_REPORTS])
+  const handleUpdatePriority = async (id: string, priority: PriorityLevel) => {
+    await pulseClient.updatePriority(id, priority)
+    loadReports()
   }
 
-  const handlePublishUpdate = (id: string) => {
+  const handlePublishUpdate = async (id: string) => {
     if (!newUpdateText.trim()) return
-    addAdminUpdate(id, newUpdateText.trim())
+    await pulseClient.addAdminUpdate(id, newUpdateText.trim())
     setNewUpdateText('')
-    setReports([...MOCK_PULSE_REPORTS])
+    loadReports()
   }
 
   return (
@@ -379,8 +383,7 @@ export default function AdminPortalPage() {
                                   placeholder="Enter resolution details to publish to the community portal..."
                                   defaultValue={report.resolutionSummary || ''}
                                   onBlur={(e) => {
-                                    updatePulseReportStatus(report.id, 'Resolved', e.target.value);
-                                    setReports([...MOCK_PULSE_REPORTS]);
+                                    handleUpdateStatus(report.id, 'Resolved', e.target.value);
                                   }}
                                 />
                                 <p className="text-[10px] text-muted-foreground mt-1">This summary will be visible to the public on the Community Portal.</p>

@@ -1,3 +1,5 @@
+import { supabase } from './supabase';
+
 export type PulseStatus = 
   | 'Submitted' 
   | 'Under Review' 
@@ -41,184 +43,118 @@ export interface PulseReport {
   adminUpdates?: { date: string; message: string }[];
 }
 
-// ── Pub/Sub listeners ─────────────────────────────────────────────────────
-type Listener = () => void;
-const listeners = new Set<Listener>();
+// Map db snake_case to camelCase
+const mapDbToReport = (row: any): PulseReport => ({
+  id: row.id,
+  title: row.title,
+  description: row.description,
+  category: row.category as PulseCategory,
+  otherCategory: row.other_category || undefined,
+  location: row.location,
+  mapLat: row.map_lat || undefined,
+  mapLng: row.map_lng || undefined,
+  priority: row.priority as PriorityLevel,
+  status: row.status as PulseStatus,
+  dateSubmitted: row.date_submitted,
+  dateResolved: row.date_resolved || undefined,
+  confirmations: row.confirmations,
+  reporterName: row.reporter_name,
+  images: row.images || [],
+  videos: row.videos || [],
+  resolutionSummary: row.resolution_summary || undefined,
+  adminUpdates: row.admin_updates || [],
+});
 
-/** Subscribe to any data mutation. Returns an unsubscribe function. */
-export function subscribeToReports(listener: Listener): () => void {
-  listeners.add(listener);
-  return () => listeners.delete(listener);
-}
-
-function notify() {
-  listeners.forEach((l) => l());
-}
-
-// ── localStorage persistence ──────────────────────────────────────────────
-const STORAGE_KEY = 'urbanpulse_reports_v1';
-
-function persist() {
-  if (typeof window === 'undefined') return;
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(MOCK_PULSE_REPORTS));
-  } catch {
-    // Quota exceeded (likely large base64 images) — strip uploaded media and retry
-    try {
-      const stripped = MOCK_PULSE_REPORTS.map((r) => ({
-        ...r,
-        images: r.images?.filter((img) => !img.startsWith('data:')),
-        videos: [],
-      }));
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(stripped));
-    } catch { /* give up silently */ }
-  }
-}
-
-// ── Seed / initial data ───────────────────────────────────────────────────
-const SEED_DATA: PulseReport[] = [
-  {
-    id: 'PR-1042',
-    title: 'Massive Pothole on Ring Road',
-    description: 'There is a massive pothole spanning the entire left lane. Several cars have been damaged over the past two days.',
-    category: 'Infrastructure',
-    location: 'Ring Road South, near Koteshwor',
-    priority: 'High',
-    status: 'Implementation in Progress',
-    dateSubmitted: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-    confirmations: 42,
-    reporterName: 'Anonymous Citizen',
-    images: ['https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?auto=format&fit=crop&q=80&w=400'],
-    adminUpdates: [
-      { date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), message: 'Assessment complete. Crew dispatched.' }
-    ]
-  },
-  {
-    id: 'PR-1045',
-    title: 'Streetlights out in Thamel',
-    description: 'Entire block is completely dark. High risk of accidents and security concerns.',
-    category: 'Water & Electricity',
-    location: 'Thamel Marg',
-    priority: 'Critical',
-    status: 'Under Review',
-    dateSubmitted: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-    confirmations: 18,
-    reporterName: 'Aayush',
-  },
-  {
-    id: 'PR-1021',
-    title: 'Illegal Dumping at Bagmati River Bank',
-    description: 'A construction company is dumping debris into the river late at night.',
-    category: 'Environmental',
-    location: 'Bagmati Corridor',
-    priority: 'High',
-    status: 'Resolved',
-    dateSubmitted: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString(),
-    dateResolved: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-    confirmations: 85,
-    reporterName: 'EcoWarrior',
-    resolutionSummary: 'City authorities investigated and fined the responsible company. Site has been cleared and warning signs installed.',
-    adminUpdates: [
-      { date: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString(), message: 'Investigation initiated.' },
-      { date: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(), message: 'Perpetrators identified and fined. Cleanup scheduled.' }
-    ],
-    images: ['https://images.unsplash.com/photo-1611284446314-60a58ac0deb9?auto=format&fit=crop&q=80&w=400']
-  },
-  {
-    id: 'PR-1050',
-    title: 'New cycling lane needed',
-    description: 'Traffic is getting worse and cyclists have no safe route from Patan to Kathmandu.',
-    category: 'Improvement Suggestion',
-    location: 'Patan to Kathmandu Route',
-    priority: 'Low',
-    status: 'Assessment in Progress',
-    dateSubmitted: new Date().toISOString(),
-    confirmations: 120,
-    reporterName: 'UrbanCyclist',
-  }
-];
-
-// Global in-memory store (initialised from seed data)
-export let MOCK_PULSE_REPORTS: PulseReport[] = [...SEED_DATA];
-
-let isInitialized = false;
-
-/** Load reports from localStorage on the client once mounted to prevent hydration mismatches */
-export function initializeReports() {
-  if (typeof window === 'undefined' || isInitialized) return;
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      const parsed = JSON.parse(stored) as PulseReport[];
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        MOCK_PULSE_REPORTS.length = 0;
-        MOCK_PULSE_REPORTS.push(...parsed);
-        notify();
-      }
+export const pulseClient = {
+  getReports: async (): Promise<PulseReport[]> => {
+    const { data, error } = await supabase
+      .from('pulse_reports')
+      .select('*')
+      .order('date_submitted', { ascending: false });
+      
+    if (error) {
+      console.error('Error fetching pulse reports:', error);
+      return [];
     }
-  } catch { /* ignore */ }
-  isInitialized = true;
-}
+    return (data || []).map(mapDbToReport);
+  },
 
-// ── Mutation helpers ──────────────────────────────────────────────────────
-
-export const addPulseReport = (
-  report: Omit<PulseReport, 'id' | 'status' | 'dateSubmitted' | 'confirmations' | 'adminUpdates'>
-): PulseReport => {
-  const newReport: PulseReport = {
-    ...report,
-    id: `PR-${Math.floor(1000 + Math.random() * 9000)}`,
-    status: 'Submitted',
-    dateSubmitted: new Date().toISOString(),
-    confirmations: 1,
-    adminUpdates: [],
-  };
-  MOCK_PULSE_REPORTS = [newReport, ...MOCK_PULSE_REPORTS];
-  persist();
-  notify();
-  return newReport;
-};
-
-export const updatePulseReportStatus = (
-  id: string,
-  newStatus: PulseStatus,
-  resolutionSummary?: string
-) => {
-  MOCK_PULSE_REPORTS = MOCK_PULSE_REPORTS.map((report) => {
-    if (report.id !== id) return report;
-    return {
-      ...report,
-      status: newStatus,
-      resolutionSummary: resolutionSummary || report.resolutionSummary,
-      dateResolved:
-        newStatus === 'Resolved' || newStatus === 'Closed'
-          ? new Date().toISOString()
-          : report.dateResolved,
+  addReport: async (report: Omit<PulseReport, 'id' | 'status' | 'dateSubmitted' | 'confirmations' | 'adminUpdates'>): Promise<PulseReport> => {
+    const newId = `PR-${Math.floor(1000 + Math.random() * 9000)}`;
+    
+    const dbRow = {
+      id: newId,
+      title: report.title,
+      description: report.description,
+      category: report.category,
+      other_category: report.otherCategory,
+      location: report.location,
+      map_lat: report.mapLat,
+      map_lng: report.mapLng,
+      priority: report.priority,
+      status: 'Submitted',
+      confirmations: 1,
+      reporter_name: report.reporterName,
+      images: report.images || [],
+      videos: report.videos || [],
+      admin_updates: []
     };
-  });
-  persist();
-  notify();
-};
 
-export const updatePulseReportPriority = (id: string, priority: PriorityLevel) => {
-  MOCK_PULSE_REPORTS = MOCK_PULSE_REPORTS.map((report) =>
-    report.id === id ? { ...report, priority } : report
-  );
-  persist();
-  notify();
-};
+    const { data, error } = await supabase
+      .from('pulse_reports')
+      .insert([dbRow])
+      .select()
+      .single();
 
-export const addAdminUpdate = (id: string, message: string) => {
-  MOCK_PULSE_REPORTS = MOCK_PULSE_REPORTS.map((report) => {
-    if (report.id !== id) return report;
-    return {
-      ...report,
-      adminUpdates: [
-        ...(report.adminUpdates || []),
-        { date: new Date().toISOString(), message },
-      ],
+    if (error || !data) {
+      console.error('Error inserting report:', error);
+      throw error;
+    }
+
+    return mapDbToReport(data);
+  },
+
+  updateStatus: async (id: string, newStatus: PulseStatus, resolutionSummary?: string): Promise<void> => {
+    const updates: any = { status: newStatus };
+    if (resolutionSummary) updates.resolution_summary = resolutionSummary;
+    if (newStatus === 'Resolved' || newStatus === 'Closed') {
+      updates.date_resolved = new Date().toISOString();
+    }
+
+    const { error } = await supabase.from('pulse_reports').update(updates).eq('id', id);
+    if (error) console.error('Error updating status:', error);
+  },
+
+  updatePriority: async (id: string, priority: PriorityLevel): Promise<void> => {
+    const { error } = await supabase.from('pulse_reports').update({ priority }).eq('id', id);
+    if (error) console.error('Error updating priority:', error);
+  },
+
+  addAdminUpdate: async (id: string, message: string): Promise<void> => {
+    // Need to fetch existing first since we append
+    const { data, error } = await supabase.from('pulse_reports').select('admin_updates').eq('id', id).single();
+    if (error || !data) return;
+
+    const newUpdates = [...(data.admin_updates || []), { date: new Date().toISOString(), message }];
+    await supabase.from('pulse_reports').update({ admin_updates: newUpdates }).eq('id', id);
+  },
+
+  subscribeToReports: (callback: () => void) => {
+    const channel = supabase
+      .channel('public:pulse_reports')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'pulse_reports' }, () => {
+        callback();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
     };
-  });
-  persist();
-  notify();
+  }
 };
+
+// ── Deprecated local arrays for backward compatibility temporarily ──────────────────────────────────────────────
+export const MOCK_PULSE_REPORTS: PulseReport[] = [];
+export function initializeReports() {}
+export function subscribeToReports(cb: any) { return () => {}; }
+

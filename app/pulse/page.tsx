@@ -8,19 +8,26 @@ import { PlusCircle, Activity, Loader2 } from 'lucide-react'
 import { PulseFeed } from '@/components/pulse/pulse-feed'
 import { CreatePulseModal } from '@/components/pulse/create-pulse-modal'
 import { PulseDetailClient } from '@/components/pulse/pulse-detail-client'
-import { MOCK_PULSE_REPORTS, subscribeToReports, addPulseReport, initializeReports } from '@/lib/pulse-data'
+import { pulseClient, PulseReport } from '@/lib/pulse-data'
 
 /* ── Inner component (needs Suspense for useSearchParams) ─────────────────── */
 function PulseContent() {
   const searchParams  = useSearchParams()
   const router        = useRouter()
-  const [, forceUpdate] = useReducer((x) => x + 1, 0)
+  const [reports, setReports] = useState<PulseReport[]>([])
   const [isModalOpen, setIsModalOpen] = useState(false)
+
+  const loadReports = async () => {
+    const data = await pulseClient.getReports()
+    setReports(data)
+  }
 
   // Re-render whenever any mutation fires (admin updates, new reports, etc.)
   useEffect(() => {
-    const unsubscribe = subscribeToReports(() => forceUpdate())
-    initializeReports()
+    loadReports()
+    const unsubscribe = pulseClient.subscribeToReports(() => {
+      loadReports()
+    })
     return unsubscribe
   }, [])
 
@@ -28,18 +35,22 @@ function PulseContent() {
 
   /* ── Detail view ─────────────────────────────────────────────────────── */
   if (reportId) {
-    const report =
-      MOCK_PULSE_REPORTS.find((r) => r.id === decodeURIComponent(reportId)) ?? null
+    const report = reports.find((r) => r.id === decodeURIComponent(reportId)) ?? null
     return <PulseDetailClient report={report} />
   }
 
   /* ── Feed view ───────────────────────────────────────────────────────── */
-  const handleReportSubmit = (
-    data: Omit<typeof MOCK_PULSE_REPORTS[0], 'id' | 'status' | 'dateSubmitted' | 'confirmations' | 'adminUpdates'>
+  const handleReportSubmit = async (
+    data: Omit<PulseReport, 'id' | 'status' | 'dateSubmitted' | 'confirmations' | 'adminUpdates'>
   ) => {
-    const newReport = addPulseReport(data) // already calls notify() + persist()
-    // Navigate straight to the new report's detail page
-    router.push(`/pulse?report=${encodeURIComponent(newReport.id)}`)
+    try {
+      const newReport = await pulseClient.addReport(data)
+      // Navigate straight to the new report's detail page
+      router.push(`/pulse?report=${encodeURIComponent(newReport.id)}`)
+    } catch (err) {
+      console.error(err)
+      alert('Failed to submit report. Ensure attachments are not too large.')
+    }
   }
 
   return (
@@ -83,7 +94,7 @@ function PulseContent() {
         transition={{ delay: 0.2 }}
       >
         {/* Cards navigate to /pulse?report=ID via PulseCard's router.push */}
-        <PulseFeed reports={MOCK_PULSE_REPORTS} />
+        <PulseFeed reports={reports} />
       </motion.div>
 
       <CreatePulseModal

@@ -18,11 +18,16 @@ import {
   Video,
   CheckCircle2,
   Clock,
+  Edit2,
+  Trash2,
+  FileEdit,
+  FileX,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ReputationBadge } from './reputation-badge'
 import { ShareModal } from './share-modal'
 import { ReportModal } from './report-modal'
+import { EditPostModal, RequestModificationModal, RequestRemovalModal } from './content-action-modals'
 
 interface PostCardProps {
   post: Post
@@ -63,12 +68,20 @@ export function PostCard({ post, currentUserId, onPostUpdated, onExpandComments 
   const [isSaving, setIsSaving] = useState(false)
   const [isShareOpen, setIsShareOpen] = useState(false)
   const [isReportOpen, setIsReportOpen] = useState(false)
+  
+  // Author action modals
+  const [isEditOpen, setIsEditOpen] = useState(false)
+  const [isModReqOpen, setIsModReqOpen] = useState(false)
+  const [isRemReqOpen, setIsRemReqOpen] = useState(false)
+
   const [reputation, setReputation] = useState<UserReputation | null>(null)
   const [localShareCount, setLocalShareCount] = useState(post.shareCount)
 
   const userVote = currentUserId ? post.votedBy[currentUserId] : undefined
   const isSaved = currentUserId ? post.savedBy.includes(currentUserId) : false
   const alreadyReported = currentUserId ? post.reportedBy.includes(currentUserId) : false
+  const isAuthor = currentUserId === post.authorId
+  const canEditDirectly = post.verificationStatus === 'Pending Review' || post.verificationStatus === 'Rejected'
 
   useEffect(() => {
     communityClient.getUserReputation(post.authorId).then(setReputation)
@@ -101,6 +114,18 @@ export function PostCard({ post, currentUserId, onPostUpdated, onExpandComments 
     communityClient.getPost(post.id).then((p) => {
       if (p) onPostUpdated(p)
     })
+  }
+
+  const handleDelete = async () => {
+    if (!currentUserId || !isAuthor) return
+    if (!confirm('Are you sure you want to delete this post?')) return
+    const success = await communityClient.deletePost(post.id, currentUserId)
+    if (success) {
+      // Just re-fetch to let the parent handle the missing post or tell parent to refresh
+      const p = await communityClient.getPost(post.id)
+      if (p) onPostUpdated(p)
+      else window.location.reload() // quick fallback
+    }
   }
 
   const isAdmin = post.authorRole === 'admin'
@@ -295,6 +320,31 @@ export function PostCard({ post, currentUserId, onPostUpdated, onExpandComments 
 
               <div className="flex-1" />
 
+              {/* Author Actions */}
+              {isAuthor && currentUserId && (
+                <div className="flex items-center gap-1 border-r border-border/50 pr-2 mr-2">
+                  {canEditDirectly ? (
+                    <>
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-muted-foreground hover:text-primary" onClick={() => setIsEditOpen(true)} title="Edit Post">
+                        <Edit2 className="size-3.5" />
+                      </Button>
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive" onClick={handleDelete} title="Delete Post">
+                        <Trash2 className="size-3.5" />
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-muted-foreground hover:text-amber-500" onClick={() => setIsModReqOpen(true)} title="Request Modification">
+                        <FileEdit className="size-3.5" />
+                      </Button>
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive" onClick={() => setIsRemReqOpen(true)} title="Request Removal">
+                        <FileX className="size-3.5" />
+                      </Button>
+                    </>
+                  )}
+                </div>
+              )}
+
               {/* Report */}
               <Button
                 variant="ghost"
@@ -334,6 +384,29 @@ export function PostCard({ post, currentUserId, onPostUpdated, onExpandComments 
         isOpen={isReportOpen}
         onClose={() => setIsReportOpen(false)}
       />
+
+      {isAuthor && currentUserId && (
+        <>
+          <EditPostModal
+            post={post}
+            isOpen={isEditOpen}
+            onClose={() => setIsEditOpen(false)}
+            onSuccess={onPostUpdated}
+          />
+          <RequestModificationModal
+            post={post}
+            isOpen={isModReqOpen}
+            onClose={() => setIsModReqOpen(false)}
+            currentUserId={currentUserId}
+          />
+          <RequestRemovalModal
+            post={post}
+            isOpen={isRemReqOpen}
+            onClose={() => setIsRemReqOpen(false)}
+            currentUserId={currentUserId}
+          />
+        </>
+      )}
     </>
   )
 }

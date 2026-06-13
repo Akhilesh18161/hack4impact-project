@@ -37,10 +37,21 @@ export interface PulseReport {
   dateResolved?: string;
   confirmations: number;
   reporterName: string;
+  reporterId?: string;
   images?: string[];
   videos?: string[];
   resolutionSummary?: string;
   adminUpdates?: { date: string; message: string }[];
+  
+  // Moderation fields
+  verificationStatus: string;
+  verifiedBy?: string;
+  verificationDate?: string;
+  editHistory: any[];
+  isDeleted: boolean;
+  deletionReason?: string;
+  deletedBy?: string;
+  deletedAt?: string;
 }
 
 // Map db snake_case to camelCase
@@ -59,24 +70,124 @@ const mapDbToReport = (row: any): PulseReport => ({
   dateResolved: row.date_resolved || undefined,
   confirmations: row.confirmations,
   reporterName: row.reporter_name,
+  reporterId: row.reporter_id,
   images: row.images || [],
   videos: row.videos || [],
   resolutionSummary: row.resolution_summary || undefined,
   adminUpdates: row.admin_updates || [],
+  verificationStatus: row.verification_status || 'Pending Review',
+  verifiedBy: row.verified_by,
+  verificationDate: row.verification_date,
+  editHistory: row.edit_history || [],
+  isDeleted: row.is_deleted || false,
+  deletionReason: row.deletion_reason,
+  deletedBy: row.deleted_by,
+  deletedAt: row.deleted_at
 });
 
 export const pulseClient = {
-  getReports: async (): Promise<PulseReport[]> => {
-    const { data, error } = await supabase
+  getReports: async (includeDeleted = false): Promise<PulseReport[]> => {
+    let query = supabase
       .from('pulse_reports')
       .select('*')
       .order('date_submitted', { ascending: false });
+      
+    if (!includeDeleted) {
+      query = query.eq('is_deleted', false);
+    }
+      
+    const { data, error } = await query;
       
     if (error) {
       console.error('Error fetching pulse reports:', error);
       return [];
     }
     return (data || []).map(mapDbToReport);
+  },
+
+  getReport: async (id: string): Promise<PulseReport | null> => {
+    const { data, error } = await supabase.from('pulse_reports').select('*').eq('id', id).single();
+    if (error || !data) return null;
+    return mapDbToReport(data);
+  },
+
+  editPulseReport: async (reportId: string, userId: string, updates: Partial<PulseReport>): Promise<PulseReport | null> => {
+    const report = await pulseClient.getReport(reportId);
+    if (!report || report.reporterId !== userId) return null;
+    
+    if (report.verificationStatus !== 'Pending Review' && report.verificationStatus !== 'Rejected') {
+      return null;
+    }
+
+    const { data, error } = await supabase.from('pulse_reports').update({
+      title: updates.title !== undefined ? updates.title : report.title,
+      description: updates.description !== undefined ? updates.description : report.description,
+      category: updates.category !== undefined ? updates.category : report.category,
+      other_category: updates.otherCategory !== undefined ? updates.otherCategory : report.otherCategory,
+      location: updates.location !== undefined ? updates.location : report.location,
+      images: updates.images !== undefined ? updates.images : report.images,
+      videos: updates.videos !== undefined ? updates.videos : report.videos,
+      edit_history: [...report.editHistory, { date: new Date().toISOString(), changes: updates }]
+    }).eq('id', reportId).select().single();
+
+    if (error || !data) return null;
+    return mapDbToReport(data);
+  },
+
+  deletePulseReport: async (reportId: string, userId: string): Promise<boolean> => {
+    const report = await pulseClient.getReport(reportId);
+    if (!report || report.reporterId !== userId) return false;
+
+    if (report.verificationStatus !== 'Pending Review' && report.verificationStatus !== 'Rejected') {
+      return false;
+    }
+
+    const { error } = await supabase.from('pulse_reports').update({
+      is_deleted: true,
+      deleted_by: userId,
+      deleted_at: new Date().toISOString()
+    }).eq('id', reportId);
+
+    return !error;
+  },
+
+  requestModification: async (reportId: string, userId: string, requestedChanges: any, reason: string): Promise<any> => {
+    const { data, error } = await supabase.from('content_requests').insert([{
+      content_id: reportId,
+      content_type: 'pulse_report',
+      request_type: 'modification',
+      requester_id: userId,
+      requested_changes: requestedChanges,
+      reason,
+      status: 'Pending'
+    }]).select().single();
+
+    if (error || !data) return null;
+    return data;
+  },
+
+  requestRemoval: async (reportId: string, userId: string, reason: string): Promise<any> => {
+    const { data, error } = await supabase.from('content_requests').insert([{
+      content_id: reportId,
+      content_type: 'pulse_report',
+      request_type: 'removal',
+      requester_id: userId,
+      reason,
+      status: 'Pending'
+    }]).select().single();
+
+    if (error || !data) return null;
+    return data;
+  },
+
+  verifyContent: async (reportId: string, adminId: string, status: string): Promise<boolean> => {
+    const { error } = await supabase.from('pulse_reports').update({
+      verification_status: status,
+      verified_by: adminId,
+      verification_date: new Date().toISOString()
+    }).eq('id', reportId);
+    
+    return !error;
   },
 
   addReport: async (report: Omit<PulseReport, 'id' | 'status' | 'dateSubmitted' | 'confirmations' | 'adminUpdates'>): Promise<PulseReport> => {
@@ -95,6 +206,7 @@ export const pulseClient = {
       status: 'Submitted',
       confirmations: 1,
       reporter_name: report.reporterName,
+      reporter_id: report.reporterId,
       images: report.images || [],
       videos: report.videos || [],
       admin_updates: []

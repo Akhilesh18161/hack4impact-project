@@ -1,19 +1,57 @@
 'use client'
 
-import { Bell, LogIn, Menu, X, CheckCircle2, MessageSquare, AlertTriangle, Activity } from 'lucide-react'
+import { Bell, LogIn, Menu, X, CheckCircle2, MessageSquare, AlertTriangle, Activity, FileEdit, FileX, ShieldCheck } from 'lucide-react'
 import { ThemeToggle } from './theme-toggle'
 import { Button } from '@/components/ui/button'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useAuth } from '@/components/auth-provider'
 import { AuthModal } from './auth-modal'
 import { ProfileDropdown } from './profile-dropdown'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { AnimatePresence, motion } from 'framer-motion'
+import { adminClient, Notification } from '@/lib/admin-data'
 
-function NotificationsPanel() {
+function getNotifIcon(title: string) {
+  const t = title.toLowerCase()
+  if (t.includes('approved') || t.includes('resolved')) return { icon: CheckCircle2, color: 'text-green-500', bg: 'bg-green-500/10' }
+  if (t.includes('rejected') || t.includes('removal') || t.includes('removed')) return { icon: FileX, color: 'text-destructive', bg: 'bg-destructive/10' }
+  if (t.includes('modification') || t.includes('edit') || t.includes('change')) return { icon: FileEdit, color: 'text-amber-500', bg: 'bg-amber-500/10' }
+  if (t.includes('verified') || t.includes('admin')) return { icon: ShieldCheck, color: 'text-primary', bg: 'bg-primary/10' }
+  return { icon: MessageSquare, color: 'text-primary', bg: 'bg-primary/10' }
+}
+
+function timeAgo(dateStr: string) {
+  const diff = Date.now() - new Date(dateStr).getTime()
+  const mins = Math.floor(diff / 60000)
+  if (mins < 1) return 'Just now'
+  if (mins < 60) return `${mins}m ago`
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24) return `${hrs}h ago`
+  return `${Math.floor(hrs / 24)}d ago`
+}
+
+function NotificationsPanel({ userId }: { userId: string }) {
   const [open, setOpen] = useState(false)
+  const [notifications, setNotifications] = useState<Notification[]>([])
+  const [loading, setLoading] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
+
+  const unreadCount = notifications.filter(n => !n.isRead).length
+
+  const loadNotifications = useCallback(async () => {
+    setLoading(true)
+    const data = await adminClient.getNotifications(userId)
+    setNotifications(data)
+    setLoading(false)
+  }, [userId])
+
+  useEffect(() => {
+    loadNotifications()
+    // Poll every 30s for new notifications
+    const interval = setInterval(loadNotifications, 30000)
+    return () => clearInterval(interval)
+  }, [loadNotifications])
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -25,6 +63,17 @@ function NotificationsPanel() {
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
+  const handleMarkRead = async (id: string) => {
+    await adminClient.markNotificationRead(id)
+    setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n))
+  }
+
+  const handleMarkAllRead = async () => {
+    const unread = notifications.filter(n => !n.isRead)
+    await Promise.all(unread.map(n => adminClient.markNotificationRead(n.id)))
+    setNotifications(prev => prev.map(n => ({ ...n, isRead: true })))
+  }
+
   return (
     <div className="relative" ref={containerRef}>
       <Button
@@ -35,7 +84,9 @@ function NotificationsPanel() {
         aria-label="Notifications"
       >
         <Bell className="size-4" />
-        <span className="absolute right-1.5 top-1.5 size-2 rounded-full bg-primary" />
+        {unreadCount > 0 && (
+          <span className="absolute right-1.5 top-1.5 size-2 rounded-full bg-primary animate-pulse" />
+        )}
       </Button>
 
       <AnimatePresence>
@@ -49,43 +100,62 @@ function NotificationsPanel() {
           >
             <div className="flex items-center justify-between border-b border-border/50 bg-muted/30 px-4 py-3">
               <h3 className="font-semibold text-sm">Notifications</h3>
-              <span className="text-[10px] text-muted-foreground font-medium bg-primary/10 text-primary px-2 py-0.5 rounded-full">2 New</span>
+              {unreadCount > 0 && (
+                <span className="text-[10px] font-medium bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                  {unreadCount} New
+                </span>
+              )}
             </div>
-            <div className="max-h-[300px] overflow-y-auto">
-              <div className="flex gap-3 px-4 py-3 hover:bg-muted/50 transition-colors border-b border-border/30 cursor-pointer">
-                <div className="mt-0.5 shrink-0 rounded-full bg-green-500/10 p-1.5">
-                  <CheckCircle2 className="size-4 text-green-500" />
+
+            <div className="max-h-[340px] overflow-y-auto">
+              {loading && notifications.length === 0 && (
+                <div className="py-8 text-center text-xs text-muted-foreground">Loading…</div>
+              )}
+              {!loading && notifications.length === 0 && (
+                <div className="py-10 flex flex-col items-center gap-2 text-muted-foreground">
+                  <Bell className="size-8 opacity-20" />
+                  <p className="text-xs">No notifications yet</p>
                 </div>
-                <div>
-                  <p className="text-xs font-semibold">Report Resolved</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">Your report "Streetlight Broken" has been marked as resolved.</p>
-                  <span className="text-[10px] text-muted-foreground mt-1 block">2 hours ago</span>
-                </div>
-              </div>
-              <div className="flex gap-3 px-4 py-3 hover:bg-muted/50 transition-colors border-b border-border/30 cursor-pointer">
-                <div className="mt-0.5 shrink-0 rounded-full bg-primary/10 p-1.5">
-                  <MessageSquare className="size-4 text-primary" />
-                </div>
-                <div>
-                  <p className="text-xs font-semibold">New Administrator Reply</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">Admin left a comment on your recent issue.</p>
-                  <span className="text-[10px] text-muted-foreground mt-1 block">Yesterday</span>
-                </div>
-              </div>
-              <div className="flex gap-3 px-4 py-3 hover:bg-muted/50 transition-colors cursor-pointer">
-                <div className="mt-0.5 shrink-0 rounded-full bg-destructive/10 p-1.5">
-                  <AlertTriangle className="size-4 text-destructive" />
-                </div>
-                <div>
-                  <p className="text-xs font-semibold">System Maintenance</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">UrbanPulse will undergo scheduled maintenance at 12:00 AM.</p>
-                  <span className="text-[10px] text-muted-foreground mt-1 block">2 days ago</span>
-                </div>
-              </div>
+              )}
+              {notifications.map((notif, i) => {
+                const { icon: Icon, color, bg } = getNotifIcon(notif.title)
+                return (
+                  <div
+                    key={notif.id}
+                    onClick={() => handleMarkRead(notif.id)}
+                    className={`flex gap-3 px-4 py-3 cursor-pointer transition-colors ${
+                      i < notifications.length - 1 ? 'border-b border-border/30' : ''
+                    } ${notif.isRead ? 'opacity-60 hover:bg-muted/30' : 'hover:bg-muted/50 bg-primary/5'}`}
+                  >
+                    <div className={`mt-0.5 shrink-0 rounded-full ${bg} p-1.5`}>
+                      <Icon className={`size-4 ${color}`} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-1">
+                        <p className="text-xs font-semibold leading-snug">{notif.title}</p>
+                        {!notif.isRead && <span className="shrink-0 size-1.5 rounded-full bg-primary mt-1" />}
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed line-clamp-2">{notif.message}</p>
+                      <span className="text-[10px] text-muted-foreground mt-1 block">{timeAgo(notif.createdAt)}</span>
+                    </div>
+                  </div>
+                )
+              })}
             </div>
-            <div className="border-t border-border/50 bg-muted/10 p-2 text-center">
-              <button onClick={() => setOpen(false)} className="text-xs text-primary font-medium hover:underline">
-                Mark all as read
+
+            <div className="border-t border-border/50 bg-muted/10 p-2 flex items-center justify-between px-4">
+              {unreadCount > 0 ? (
+                <button
+                  onClick={handleMarkAllRead}
+                  className="text-xs text-primary font-medium hover:underline"
+                >
+                  Mark all as read
+                </button>
+              ) : (
+                <span className="text-xs text-muted-foreground">All caught up!</span>
+              )}
+              <button onClick={() => setOpen(false)} className="text-xs text-muted-foreground hover:text-foreground">
+                Close
               </button>
             </div>
           </motion.div>
@@ -276,7 +346,7 @@ export function DashboardHeader() {
 
               {/* Notification Icon (Auth Only) */}
               {user && (
-                <NotificationsPanel />
+                <NotificationsPanel userId={user.id} />
               )}
 
               <ThemeToggle />

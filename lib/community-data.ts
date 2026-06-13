@@ -60,6 +60,16 @@ export interface Post {
   savedBy: string[];
   votedBy: Record<string, 'up' | 'down'>;
   reportedBy: string[];
+  // Moderation fields
+  status: string;
+  verificationStatus: string;
+  verifiedBy?: string;
+  verificationDate?: string;
+  editHistory: any[];
+  isDeleted: boolean;
+  deletionReason?: string;
+  deletedBy?: string;
+  deletedAt?: string;
 }
 
 export interface Report {
@@ -88,6 +98,19 @@ export interface TrendingTopic {
   postCount: number;
 }
 
+export interface ContentRequest {
+  id: string;
+  contentId: string;
+  contentType: 'post' | 'pulse_report';
+  requestType: 'modification' | 'removal';
+  requesterId: string;
+  createdAt: string;
+  requestedChanges?: any;
+  reason: string;
+  status: 'Pending' | 'Approved' | 'Rejected' | 'More Information Requested';
+  adminNotes?: string;
+}
+
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
 function computePriority(netScore: number, commentCount: number): PriorityLevel {
@@ -109,8 +132,8 @@ export const communityClient = {
 
   // ── Posts ──────────────────────────────────────────────────────────────────
 
-  getPosts: async (): Promise<Post[]> => {
-    const { data: posts, error } = await supabase
+  getPosts: async (includeDeleted = false): Promise<Post[]> => {
+    let query = supabase
       .from('posts')
       .select(`
         *,
@@ -119,6 +142,12 @@ export const communityClient = {
         reported_posts(user_id)
       `)
       .order('created_at', { ascending: false });
+      
+    if (!includeDeleted) {
+      query = query.eq('is_deleted', false);
+    }
+
+    const { data: posts, error } = await query;
 
     if (error || !posts) return [];
 
@@ -146,7 +175,16 @@ export const communityClient = {
         isSolved: p.is_solved,
         savedBy: p.saved_posts?.map((s: any) => s.user_id) || [],
         votedBy,
-        reportedBy: p.reported_posts?.map((r: any) => r.user_id) || []
+        reportedBy: p.reported_posts?.map((r: any) => r.user_id) || [],
+        status: p.status || 'Submitted',
+        verificationStatus: p.verification_status || 'Pending Review',
+        verifiedBy: p.verified_by,
+        verificationDate: p.verification_date,
+        editHistory: p.edit_history || [],
+        isDeleted: p.is_deleted || false,
+        deletionReason: p.deletion_reason,
+        deletedBy: p.deleted_by,
+        deletedAt: p.deleted_at
       };
     });
   },
@@ -192,8 +230,117 @@ export const communityClient = {
       isSolved: data.is_solved,
       savedBy: [],
       votedBy: {},
-      reportedBy: []
+      reportedBy: [],
+      status: data.status || 'Submitted',
+      verificationStatus: data.verification_status || 'Pending Review',
+      verifiedBy: data.verified_by,
+      verificationDate: data.verification_date,
+      editHistory: data.edit_history || [],
+      isDeleted: data.is_deleted || false,
+      deletionReason: data.deletion_reason,
+      deletedBy: data.deleted_by,
+      deletedAt: data.deleted_at
     };
+  },
+
+  editPost: async (postId: string, userId: string, updates: Partial<Post>): Promise<Post | null> => {
+    const post = await communityClient.getPost(postId);
+    if (!post || post.authorId !== userId) return null;
+    
+    if (post.verificationStatus !== 'Pending Review' && post.verificationStatus !== 'Rejected') {
+      return null;
+    }
+
+    const { data, error } = await supabase.from('posts').update({
+      title: updates.title !== undefined ? updates.title : post.title,
+      description: updates.description !== undefined ? updates.description : post.description,
+      categories: updates.categories !== undefined ? updates.categories : post.categories,
+      media_urls: updates.mediaUrls !== undefined ? updates.mediaUrls : post.mediaUrls,
+      media_type: updates.mediaType !== undefined ? updates.mediaType : post.mediaType,
+      media_file_names: updates.mediaFileNames !== undefined ? updates.mediaFileNames : post.mediaFileNames,
+      edit_history: [...post.editHistory, { date: new Date().toISOString(), changes: updates }]
+    }).eq('id', postId).select().single();
+
+    if (error || !data) return null;
+    return communityClient.getPost(postId);
+  },
+
+  deletePost: async (postId: string, userId: string): Promise<boolean> => {
+    const post = await communityClient.getPost(postId);
+    if (!post || post.authorId !== userId) return false;
+
+    if (post.verificationStatus !== 'Pending Review' && post.verificationStatus !== 'Rejected') {
+      return false;
+    }
+
+    const { error } = await supabase.from('posts').update({
+      is_deleted: true,
+      deleted_by: userId,
+      deleted_at: new Date().toISOString()
+    }).eq('id', postId);
+
+    return !error;
+  },
+
+  requestModification: async (postId: string, userId: string, requestedChanges: any, reason: string): Promise<ContentRequest | null> => {
+    const { data, error } = await supabase.from('content_requests').insert([{
+      content_id: postId,
+      content_type: 'post',
+      request_type: 'modification',
+      requester_id: userId,
+      requested_changes: requestedChanges,
+      reason,
+      status: 'Pending'
+    }]).select().single();
+
+    if (error || !data) return null;
+    return {
+      id: data.id,
+      contentId: data.content_id,
+      contentType: data.content_type as any,
+      requestType: data.request_type as any,
+      requesterId: data.requester_id,
+      createdAt: data.created_at,
+      requestedChanges: data.requested_changes,
+      reason: data.reason,
+      status: data.status as any,
+      adminNotes: data.admin_notes
+    };
+  },
+
+  requestRemoval: async (postId: string, userId: string, reason: string): Promise<ContentRequest | null> => {
+    const { data, error } = await supabase.from('content_requests').insert([{
+      content_id: postId,
+      content_type: 'post',
+      request_type: 'removal',
+      requester_id: userId,
+      reason,
+      status: 'Pending'
+    }]).select().single();
+
+    if (error || !data) return null;
+    return {
+      id: data.id,
+      contentId: data.content_id,
+      contentType: data.content_type as any,
+      requestType: data.request_type as any,
+      requesterId: data.requester_id,
+      createdAt: data.created_at,
+      requestedChanges: data.requested_changes,
+      reason: data.reason,
+      status: data.status as any,
+      adminNotes: data.admin_notes
+    };
+  },
+
+  verifyContent: async (postId: string, adminId: string, status: string): Promise<boolean> => {
+    const { error } = await supabase.from('posts').update({
+      verification_status: status,
+      verified_by: adminId,
+      verification_date: new Date().toISOString()
+    }).eq('id', postId);
+    
+    return !error;
   },
 
   votePost: async (postId: string, userId: string, voteType: 'up' | 'down'): Promise<Post | null> => {

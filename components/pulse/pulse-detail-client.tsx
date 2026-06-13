@@ -8,9 +8,13 @@ import { Button } from '@/components/ui/button'
 import {
   ArrowLeft, MapPin, Calendar, ThumbsUp, User,
   Clock, CheckCircle2, ImageIcon, Video, X, ExternalLink,
+  Edit2, Trash2, FileEdit, FileX
 } from 'lucide-react'
 import { useState } from 'react'
 import { motion } from 'framer-motion'
+import { useAuth } from '@/components/auth-provider'
+import { EditPulseModal, RequestModificationModal, RequestRemovalModal } from './content-action-modals'
+import { pulseClient } from '@/lib/pulse-data'
 
 const priorityColors: Record<string, string> = {
   Critical: 'bg-red-500/10 text-red-500 border-red-500/30',
@@ -23,9 +27,28 @@ interface Props {
   report: PulseReport | null
 }
 
-export function PulseDetailClient({ report }: Props) {
+export function PulseDetailClient({ report: initialReport }: Props) {
   const router = useRouter()
+  const { user } = useAuth()
+  const [report, setReport] = useState<PulseReport | null>(initialReport)
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null)
+  
+  // Author action modals
+  const [isEditOpen, setIsEditOpen] = useState(false)
+  const [isModReqOpen, setIsModReqOpen] = useState(false)
+  const [isRemReqOpen, setIsRemReqOpen] = useState(false)
+
+  const isAuthor = user?.id === report?.reporterId
+  const canEditDirectly = report?.verificationStatus === 'Pending Review' || report?.verificationStatus === 'Rejected'
+
+  const handleDelete = async () => {
+    if (!user || !report || !isAuthor) return
+    if (!confirm('Are you sure you want to delete this report?')) return
+    const success = await pulseClient.deletePulseReport(report.id, user.id)
+    if (success) {
+      router.push('/pulse')
+    }
+  }
 
   if (!report) {
     return (
@@ -97,7 +120,7 @@ export function PulseDetailClient({ report }: Props) {
               {report.otherCategory && <Badge variant="outline" className="text-xs">{report.otherCategory}</Badge>}
             </div>
             <h1 className="text-4xl sm:text-5xl font-black tracking-tight leading-tight mb-6">{report.title}</h1>
-            <div className="flex flex-wrap gap-6 text-sm text-muted-foreground">
+            <div className="flex flex-wrap gap-6 text-sm text-muted-foreground items-center">
               <span className="flex items-center gap-2"><MapPin className="size-4 text-primary/70" />{report.location}</span>
               <span className="flex items-center gap-2">
                 <Calendar className="size-4" />
@@ -105,6 +128,30 @@ export function PulseDetailClient({ report }: Props) {
               </span>
               <span className="flex items-center gap-2"><ThumbsUp className="size-4 text-primary/70" />{report.confirmations} Citizen Confirmations</span>
               {report.reporterName && <span className="flex items-center gap-2"><User className="size-4" />{report.reporterName}</span>}
+              
+              {isAuthor && user && (
+                <div className="flex items-center gap-2 ml-auto">
+                  {canEditDirectly ? (
+                    <>
+                      <Button variant="outline" size="sm" onClick={() => setIsEditOpen(true)} className="gap-2">
+                        <Edit2 className="size-4" /> Edit
+                      </Button>
+                      <Button variant="destructive" size="sm" onClick={handleDelete} className="gap-2">
+                        <Trash2 className="size-4" /> Delete
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <Button variant="outline" size="sm" onClick={() => setIsModReqOpen(true)} className="gap-2 border-amber-500/30 text-amber-600 hover:bg-amber-500/10">
+                        <FileEdit className="size-4" /> Request Change
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={() => setIsRemReqOpen(true)} className="gap-2 border-destructive/30 text-destructive hover:bg-destructive/10">
+                        <FileX className="size-4" /> Request Removal
+                      </Button>
+                    </>
+                  )}
+                </div>
+              )}
             </div>
           </motion.div>
 
@@ -276,6 +323,30 @@ export function PulseDetailClient({ report }: Props) {
           </div>
         </div>
       </div>
+
+      {/* Author Modals */}
+      {isAuthor && user && report && (
+        <>
+          <EditPulseModal
+            report={report}
+            isOpen={isEditOpen}
+            onClose={() => setIsEditOpen(false)}
+            onSuccess={setReport}
+          />
+          <RequestModificationModal
+            report={report}
+            isOpen={isModReqOpen}
+            onClose={() => setIsModReqOpen(false)}
+            currentUserId={user.id}
+          />
+          <RequestRemovalModal
+            report={report}
+            isOpen={isRemReqOpen}
+            onClose={() => setIsRemReqOpen(false)}
+            currentUserId={user.id}
+          />
+        </>
+      )}
     </>
   )
 }

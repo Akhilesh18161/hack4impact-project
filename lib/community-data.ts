@@ -569,7 +569,12 @@ export const communityClient = {
 
     // Hard-delete: no replies, remove from DB entirely
     const purgedIds: string[] = [commentId];
-    await supabase.from('comments').delete().eq('id', commentId);
+    const { error: deleteError } = await supabase.from('comments').delete().eq('id', commentId);
+    
+    if (deleteError) {
+      console.error("Failed to delete comment:", deleteError);
+      return false;
+    }
 
     // Cascade up: if parent is a soft-deleted orphan (no remaining replies), hard-delete it too
     let parentId = comment.parentId;
@@ -581,7 +586,11 @@ export const communityClient = {
         c => c.parentId === parent.id && !purgedIds.includes(c.id),
       );
       if (parent.isDeleted && remainingReplies.length === 0) {
-        await supabase.from('comments').delete().eq('id', parent.id);
+        const { error: cascadeError } = await supabase.from('comments').delete().eq('id', parent.id);
+        if (cascadeError) {
+          console.error("Failed to cascade delete:", cascadeError);
+          break;
+        }
         purgedIds.push(parent.id);
         parentId = parent.parentId;
       } else {

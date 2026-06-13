@@ -18,6 +18,10 @@ export const metadata: Metadata = {
   description:
     'Real-time insights on sustainability, AQI, economy, and urban development across major municipal cities.',
   generator: 'v0.app',
+  icons: {
+    icon: '/hack4impact-project/favicon.png',
+    apple: '/hack4impact-project/favicon.png',
+  },
 }
 
 export const viewport: Viewport = {

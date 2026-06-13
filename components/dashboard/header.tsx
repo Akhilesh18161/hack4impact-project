@@ -1,6 +1,6 @@
 'use client'
 
-import { Bell, LogIn, Menu, X, CheckCircle2, MessageSquare, AlertTriangle, Activity, FileEdit, FileX, ShieldCheck } from 'lucide-react'
+import { Bell, LogIn, Menu, X, CheckCircle2, MessageSquare, AlertTriangle, FileEdit, FileX, ShieldCheck } from 'lucide-react'
 import { ThemeToggle } from './theme-toggle'
 import { Button } from '@/components/ui/button'
 import { useState, useEffect, useRef, useCallback } from 'react'
@@ -300,16 +300,24 @@ export function DashboardHeader() {
             <div className="flex items-center gap-8">
               {/* Logo */}
               <Link href="/" className="flex items-center gap-3 group">
-                <div className="flex size-9 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-lg shadow-primary/30 transition-transform duration-200 group-hover:scale-105">
-                  <Activity className="size-4 animate-pulse" />
+                {/* Logo with glow behind it */}
+                <div className="relative flex items-center justify-center">
+                  {/* Glow layer */}
+                  <div className="absolute inset-0 -z-10 scale-150 rounded-full bg-primary/30 blur-xl transition-all duration-300 group-hover:bg-primary/50 group-hover:scale-175" />
+                  <img
+                    src="/hack4impact-project/logo.png"
+                    alt="UrbanPulse"
+                    className="relative h-10 w-auto drop-shadow-[0_0_8px_rgba(34,197,94,0.6)] transition-all duration-300 group-hover:drop-shadow-[0_0_14px_rgba(34,197,94,0.9)] group-hover:scale-105"
+                  />
                 </div>
-                <div className="hidden sm:block">
-                  <h1 className="text-sm font-bold leading-none tracking-tight text-foreground">
-                    UrbanPulse
-                  </h1>
-                  <p className="mt-0.5 text-[10px] font-medium text-muted-foreground">
+                {/* Brand name */}
+                <div className="hidden sm:flex flex-col leading-none">
+                  <span className="text-base font-black tracking-tight text-foreground transition-colors group-hover:text-primary">
+                    Urban<span className="text-primary">Pulse</span>
+                  </span>
+                  <span className="text-[10px] font-medium text-muted-foreground mt-0.5">
                     Sustainable Cities Dashboard
-                  </p>
+                  </span>
                 </div>
               </Link>
 

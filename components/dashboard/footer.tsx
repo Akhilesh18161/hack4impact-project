@@ -2,7 +2,7 @@
 
 import React from 'react'
 import Link from 'next/link'
-import { Mail, Phone, MapPin, Activity } from 'lucide-react'
+import { Mail, Phone, MapPin } from 'lucide-react'
 
 export function Footer() {
   const currentYear = new Date().getFullYear()
@@ -14,13 +14,12 @@ export function Footer() {
 
           {/* Brand & Bio */}
           <div className="md:col-span-1 lg:col-span-2">
-            <Link href="/" className="group flex w-fit items-center gap-2.5">
-              <div className="flex size-9 items-center justify-center rounded-xl bg-primary/10 text-primary shadow-inner transition-all group-hover:scale-105 group-hover:bg-primary group-hover:text-primary-foreground">
-                <Activity className="size-5 stroke-[2.5px]" />
-              </div>
-              <span className="text-xl font-black tracking-tight text-foreground transition-colors group-hover:text-primary">
-                Urban<span className="text-primary">Pulse</span>
-              </span>
+            <Link href="/" className="group flex w-fit items-center">
+              <img
+                src="/hack4impact-project/footer_logo.png"
+                alt="UrbanPulse"
+                className="h-12 w-auto opacity-90 transition-opacity group-hover:opacity-100"
+              />
             </Link>
             <p className="mt-6 max-w-sm text-sm leading-relaxed text-muted-foreground text-balance">
               UrbanPulse is a smart city platform empowering citizens through community-driven insights, interactive reporting, and data-driven governance. Together, we build more sustainable and responsive urban environments.

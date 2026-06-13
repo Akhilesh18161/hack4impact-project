@@ -38,8 +38,9 @@ export function PulseDetailClient({ report: initialReport }: Props) {
   const [isModReqOpen, setIsModReqOpen] = useState(false)
   const [isRemReqOpen, setIsRemReqOpen] = useState(false)
 
-  const isAuthor = user?.id === report?.reporterId
-  const canEditDirectly = report?.verificationStatus === 'Pending Review' || report?.verificationStatus === 'Rejected'
+  const isAdmin = user?.role === 'admin'
+  const isAuthor = user?.id === report?.reporterId || isAdmin
+  const canEditDirectly = isAdmin || report?.verificationStatus === 'Pending Review' || report?.verificationStatus === 'Rejected'
 
   const handleDelete = async () => {
     if (!user || !report || !isAuthor) return

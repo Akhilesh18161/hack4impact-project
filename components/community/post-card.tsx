@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useAuth } from '@/components/auth-provider'
 import { Post, communityClient, UserReputation } from '@/lib/community-data'
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -77,11 +78,14 @@ export function PostCard({ post, currentUserId, onPostUpdated, onExpandComments 
   const [reputation, setReputation] = useState<UserReputation | null>(null)
   const [localShareCount, setLocalShareCount] = useState(post.shareCount)
 
+  const { user } = useAuth()
+  const isAdmin = user?.role === 'admin'
+
   const userVote = currentUserId ? post.votedBy[currentUserId] : undefined
   const isSaved = currentUserId ? post.savedBy.includes(currentUserId) : false
   const alreadyReported = currentUserId ? post.reportedBy.includes(currentUserId) : false
-  const isAuthor = currentUserId === post.authorId
-  const canEditDirectly = post.verificationStatus === 'Pending Review' || post.verificationStatus === 'Rejected'
+  const isAuthor = currentUserId === post.authorId || isAdmin
+  const canEditDirectly = isAdmin || post.verificationStatus === 'Pending Review' || post.verificationStatus === 'Rejected'
 
   useEffect(() => {
     communityClient.getUserReputation(post.authorId).then(setReputation)
@@ -128,7 +132,7 @@ export function PostCard({ post, currentUserId, onPostUpdated, onExpandComments 
     }
   }
 
-  const isAdmin = post.authorRole === 'admin'
+  const isAuthorAdmin = post.authorRole === 'admin'
   const initials = getInitials(post.authorName)
 
   return (
@@ -150,7 +154,7 @@ export function PostCard({ post, currentUserId, onPostUpdated, onExpandComments 
               <div
                 className={cn(
                   'flex size-9 shrink-0 items-center justify-center rounded-full text-xs font-black text-white shadow-sm',
-                  isAdmin
+                  isAuthorAdmin
                     ? 'bg-gradient-to-br from-destructive to-rose-600'
                     : 'bg-gradient-to-br from-primary to-emerald-600',
                 )}

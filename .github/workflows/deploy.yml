@@ -41,6 +41,8 @@ jobs:
         run: pnpm run build
         env:
           NEXT_PUBLIC_GNEWS_API_KEY: ${{ secrets.NEXT_PUBLIC_GNEWS_API_KEY }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
 
       - name: Add .nojekyll (allow _next/ to be served by Pages)
         run: touch ./out/.nojekyll

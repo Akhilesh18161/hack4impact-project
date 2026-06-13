@@ -33,27 +33,11 @@ export const authClient = {
       if (error) return { user: null, error: error.message };
       
       if (data.user) {
-        // Create profile in public.profiles table
-        const profileData = {
+        const profile: UserProfile = {
           id: data.user.id,
           email: data.user.email!,
-          full_name: fullName,
-          role: role,
-        };
-        
-        const { error: profileError } = await supabase.from('profiles').insert([profileData]);
-        
-        if (profileError) {
-          console.error("Profile creation error:", profileError);
-          // If we fail to create the profile, we should probably still return the auth user, but it might cause issues later.
-          // In a real app we might want to handle this more gracefully.
-        }
-
-        const profile: UserProfile = {
-          id: profileData.id,
-          email: profileData.email,
-          fullName: profileData.full_name,
-          role: profileData.role as UserRole,
+          fullName: fullName,
+          role: role as UserRole,
         };
 
         return { user: profile, error: null };
